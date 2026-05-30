@@ -1,0 +1,1231 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>ライフプラン＋資産管理</title>
+<style>
+:root{
+  --navy:#1a2b4a;--blue:#2563eb;--green:#16a34a;--red:#dc2626;
+  --amber:#f59e0b;--bg:#f0f4f8;--card:#fff;--border:#e2e8f0;--muted:#64748b;
+  --r:14px;--shadow:0 2px 12px rgba(0,0,0,.08);
+}
+*{box-sizing:border-box;margin:0;padding:0;}
+body{font-family:'Hiragino Sans','Yu Gothic UI',sans-serif;background:var(--bg);color:var(--navy);min-height:100vh;}
+.hd{background:var(--navy);color:#fff;padding:0 16px;height:52px;display:flex;align-items:center;gap:12px;position:sticky;top:0;z-index:100;box-shadow:0 2px 8px rgba(0,0,0,.3);}
+.hd-back{background:none;border:1.5px solid rgba(255,255,255,.3);color:#fff;border-radius:8px;padding:5px 12px;font-size:.75rem;font-weight:700;cursor:pointer;}
+.hd-title{font-size:.9rem;font-weight:900;flex:1;}
+.hd-tabs{display:flex;gap:4px;}
+.hd-tab{background:none;border:none;color:rgba(255,255,255,.55);padding:6px 12px;border-radius:8px;font-size:.73rem;font-weight:700;cursor:pointer;transition:.15s;}
+.hd-tab.active{background:rgba(255,255,255,.2);color:#fff;}
+.main{max-width:1100px;margin:0 auto;padding:16px;}
+.card{background:var(--card);border-radius:var(--r);padding:18px;box-shadow:var(--shadow);margin-bottom:14px;}
+.sec-hd{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;}
+.sec-title{font-size:.84rem;font-weight:900;color:var(--navy);}
+.add-btn{font-size:.72rem;padding:5px 13px;background:var(--navy);color:#fff;border:none;border-radius:8px;font-weight:700;cursor:pointer;}
+.nw-bar{display:grid;grid-template-columns:1fr auto 1fr;gap:12px;align-items:center;text-align:center;margin-bottom:12px;}
+.nw-box{border-radius:12px;padding:13px 10px;}
+.nw-box.asset{background:#f0fdf4;border:2px solid #4ade80;}
+.nw-box.liab{background:#fef2f2;border:2px solid #f87171;}
+.nw-box.net{background:var(--navy);border:2px solid var(--navy);color:#fff;text-align:center;padding:16px;margin-bottom:12px;}
+.nw-val{font-size:1.35rem;font-weight:900;}
+.nw-lbl{font-size:.63rem;opacity:.75;margin-top:3px;}
+.bs-total{display:flex;justify-content:space-between;align-items:center;border-top:2px solid var(--border);padding-top:8px;margin-top:8px;font-weight:800;font-size:.82rem;}
+th,td{vertical-align:middle;}
+.tl-wrap{overflow-x:auto;padding-bottom:6px;}
+.modal-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:20000;overflow-y:auto;}
+.modal-box{background:#fff;border-radius:18px;padding:22px;max-width:420px;margin:40px auto;box-shadow:0 8px 40px rgba(0,0,0,.2);}
+.modal-title{font-size:1rem;font-weight:900;color:var(--navy);margin-bottom:4px;}
+.modal-sub{font-size:.7rem;color:var(--muted);margin-bottom:14px;}
+.form-row{margin-bottom:10px;}
+.form-label{display:block;font-size:.72rem;font-weight:700;color:var(--muted);margin-bottom:4px;}
+.form-input{width:100%;border:1.5px solid var(--border);border-radius:9px;padding:9px 12px;font-size:.82rem;}
+.toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%);background:var(--navy);color:#fff;padding:10px 20px;border-radius:20px;font-size:.8rem;font-weight:700;z-index:9999;display:none;white-space:nowrap;}
+</style>
+</head>
+<body>
+
+<div class="hd">
+  <button class="hd-back" onclick="history.back()">← 戻る</button>
+  <div class="hd-title">🗓 ライフプラン＋資産管理</div>
+  <div class="hd-tabs">
+    <button class="hd-tab active" id="tab-bs"         onclick="showTab('bs')">💰 BS</button>
+    <button class="hd-tab"        id="tab-timeline"   onclick="showTab('timeline')">📅 年表</button>
+    <button class="hd-tab"        id="tab-projection" onclick="showTab('projection')">📈 推移</button>
+  </div>
+  <button onclick="openSettings()" style="background:none;border:1.5px solid rgba(255,255,255,.3);color:#fff;border-radius:8px;padding:5px 11px;font-size:.82rem;cursor:pointer;margin-left:8px;" title="設定">⚙</button>
+</div>
+
+<div class="main">
+
+<!-- ===== BS ===== -->
+<div id="view-bs">
+
+  <!-- 月次ナビ -->
+  <div class="card" style="padding:12px 16px;">
+    <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
+      <div style="font-size:.75rem;font-weight:900;color:var(--navy);">📅 記録月</div>
+      <button onclick="changeBS(-1)" style="background:none;border:1.5px solid var(--border);border-radius:7px;padding:3px 10px;cursor:pointer;font-size:.8rem;font-weight:700;">‹</button>
+      <div id="bs-month-label" style="font-size:.9rem;font-weight:900;color:var(--blue);min-width:80px;text-align:center;"></div>
+      <button onclick="changeBS(1)" style="background:none;border:1.5px solid var(--border);border-radius:7px;padding:3px 10px;cursor:pointer;font-size:.8rem;font-weight:700;">›</button>
+      <button onclick="copyFromPrevMonth()" style="font-size:.68rem;padding:4px 10px;background:#f0f9ff;border:1.5px solid #bae6fd;border-radius:7px;color:#0891b2;font-weight:700;cursor:pointer;">📋 前月コピー</button>
+      <div style="margin-left:auto;display:flex;gap:6px;align-items:center;">
+        <span id="bs-record-badge" style="font-size:.63rem;color:#94a3b8;"></span>
+        <select id="bs-month-jump" onchange="switchBSMonth(this.value)" style="font-size:.68rem;padding:4px 7px;border:1.5px solid var(--border);border-radius:7px;background:#fff;">
+          <option value="">記録月一覧</option>
+        </select>
+      </div>
+    </div>
+    <div id="bs-month-diff" style="margin-top:8px;display:none;"></div>
+  </div>
+
+  <!-- 純資産サマリー -->
+  <div class="card">
+    <div class="sec-hd"><div class="sec-title">💰 現在の純資産（バランスシート）</div></div>
+    <div class="nw-bar">
+      <div class="nw-box asset"><div class="nw-val" id="total-asset-disp" style="color:#16a34a;">─</div><div class="nw-lbl">総資産</div></div>
+      <div style="font-size:1.3rem;color:var(--muted);">−</div>
+      <div class="nw-box liab"><div class="nw-val" id="total-liab-disp" style="color:#dc2626;">─</div><div class="nw-lbl">総負債</div></div>
+    </div>
+    <div class="nw-box net">
+      <div style="font-size:.68rem;opacity:.7;margin-bottom:5px;">純資産（ネットワース）</div>
+      <div class="nw-val" id="net-worth-disp">─</div>
+    </div>
+    <div id="owner-nw-breakdown"></div>
+    <div id="pl-sync-info" style="background:#f0f9ff;border-radius:10px;padding:9px 13px;font-size:.71rem;color:#0c4a6e;display:none;margin-top:10px;">📊 <span id="pl-sync-text"></span></div>
+  </div>
+
+  <!-- 資産口座 -->
+  <div class="card">
+    <div class="sec-hd">
+      <div class="sec-title">🟢 資産口座一覧</div>
+      <button class="add-btn" onclick="addAccount('asset')">＋ 口座追加</button>
+    </div>
+    <div id="asset-filter-bar" style="display:flex;flex-wrap:wrap;gap:5px;margin-bottom:10px;"></div>
+    <div class="tl-wrap"><table id="asset-table" style="width:100%;border-collapse:collapse;font-size:.75rem;min-width:500px;"></table></div>
+    <div id="asset-owner-breakdown"></div>
+    <div class="bs-total"><span>資産合計</span><span id="asset-total" style="color:#16a34a;">0万円</span></div>
+  </div>
+
+  <!-- 負債 -->
+  <div class="card">
+    <div class="sec-hd">
+      <div class="sec-title">🔴 負債・ローン一覧</div>
+      <button class="add-btn" onclick="addAccount('liab')">＋ 負債追加</button>
+    </div>
+    <div class="tl-wrap"><table id="liab-table" style="width:100%;border-collapse:collapse;font-size:.75rem;min-width:500px;"></table></div>
+    <div id="liab-owner-breakdown"></div>
+    <div id="loan-summary"></div>
+    <div class="bs-total"><span>負債合計</span><span id="liab-total" style="color:#dc2626;">0万円</span></div>
+  </div>
+</div>
+
+<!-- ===== 年表 ===== -->
+<div id="view-timeline" style="display:none;">
+  <div class="card">
+    <div class="sec-hd">
+      <div class="sec-title">📅 ライフイベント年表</div>
+      <button class="add-btn" onclick="openEventModal()">＋ イベント追加</button>
+    </div>
+    <div class="tl-wrap"><div id="timeline-container"></div></div>
+    <div style="font-size:.6rem;color:#94a3b8;margin-top:6px;">● 今年　※ 子供情報はトップページ設定から自動連携</div>
+  </div>
+  <div class="card">
+    <div class="sec-hd"><div class="sec-title">📝 カスタムイベント一覧</div></div>
+    <div id="custom-events-list" style="display:flex;flex-direction:column;gap:8px;"></div>
+    <div id="custom-events-empty" style="text-align:center;color:#94a3b8;font-size:.76rem;padding:16px;display:none;">
+      イベントがまだありません。「＋ イベント追加」から登録してください。
+    </div>
+  </div>
+</div>
+
+<!-- ===== 推移 ===== -->
+<div id="view-projection" style="display:none;">
+  <div class="card">
+    <div class="sec-hd"><div class="sec-title">📈 純資産・老後資金 推移シミュレーション</div></div>
+    <div id="projection-summary" style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:14px;"></div>
+    <div class="tl-wrap"><div id="projection-chart" style="min-width:600px;"></div></div>
+    <div id="chart-legend" style="display:flex;gap:14px;flex-wrap:wrap;margin-top:8px;font-size:.63rem;color:var(--muted);"></div>
+  </div>
+  <div class="card">
+    <div class="sec-hd"><div class="sec-title">🗂 年次資産推移テーブル</div></div>
+    <div class="tl-wrap"><table id="projection-table" style="width:100%;border-collapse:collapse;font-size:.72rem;min-width:620px;"></table></div>
+  </div>
+</div>
+
+</div><!-- /main -->
+
+<!-- 設定モーダル -->
+<div class="modal-overlay" id="settings-modal" onclick="if(event.target===this)closeSettings()" style="display:none;">
+  <div class="modal-box" style="max-width:460px;">
+    <div class="modal-title">⚙ 設定</div>
+    <div class="modal-sub">名義・アプリの設定をカスタマイズ</div>
+
+    <!-- 設定タブ -->
+    <div style="display:flex;gap:4px;margin-bottom:16px;background:#f1f5f9;border-radius:10px;padding:4px;">
+      <button id="stab-owners" onclick="switchStab('owners')"
+        style="flex:1;padding:7px;border:none;border-radius:7px;font-size:.7rem;font-weight:700;cursor:pointer;background:var(--navy);color:#fff;">
+        👥 名義
+      </button>
+      <button id="stab-family" onclick="switchStab('family')"
+        style="flex:1;padding:7px;border:none;border-radius:7px;font-size:.7rem;font-weight:700;cursor:pointer;background:transparent;color:#64748b;">
+        👨‍👩‍👧 家族
+      </button>
+      <button id="stab-display" onclick="switchStab('display')"
+        style="flex:1;padding:7px;border:none;border-radius:7px;font-size:.7rem;font-weight:700;cursor:pointer;background:transparent;color:#64748b;">
+        🎨 表示
+      </button>
+      <button id="stab-data" onclick="switchStab('data')"
+        style="flex:1;padding:7px;border:none;border-radius:7px;font-size:.7rem;font-weight:700;cursor:pointer;background:transparent;color:#64748b;">
+        🗄 データ
+      </button>
+    </div>
+
+    <!-- 名義管理 -->
+    <div id="stab-owners-panel">
+      <div style="font-size:.72rem;color:#94a3b8;margin-bottom:10px;">名前をクリックして変更。新しい名義を追加することもできます。</div>
+      <div id="owners-edit-list" style="display:flex;flex-direction:column;gap:6px;margin-bottom:10px;"></div>
+      <button onclick="addCustomOwner()" style="width:100%;padding:8px;background:#f8fafc;border:1.5px dashed #e2e8f0;border-radius:9px;font-size:.73rem;font-weight:700;color:#475569;cursor:pointer;">＋ 名義を追加</button>
+    </div>
+
+    <!-- 表示設定 -->
+    <!-- 家族情報パネル -->
+    <div id="stab-family-panel" style="display:none;">
+      <div style="font-size:.72rem;color:#94a3b8;margin-bottom:12px;">配偶者・子供の情報を設定します（年表に反映されます）</div>
+      <div style="background:#f0f9ff;border-radius:10px;padding:10px 14px;margin-bottom:10px;">
+        <div style="font-size:.74rem;font-weight:800;color:#0891b2;margin-bottom:8px;">👫 配偶者</div>
+        <div style="display:flex;align-items:center;gap:8px;">
+          <label style="font-size:.7rem;font-weight:700;color:#64748b;min-width:60px;">生まれ年</label>
+          <input type="number" id="family-spouse-birth" placeholder="例：1985" min="1940" max="2010"
+            style="border:1.5px solid var(--border);border-radius:7px;padding:5px 10px;font-size:.78rem;width:100px;"
+            onchange="saveFamilySettings()">
+          <span id="family-spouse-age-disp" style="font-size:.7rem;color:#0891b2;font-weight:700;"></span>
+        </div>
+      </div>
+      <div style="background:#f0fdf4;border-radius:10px;padding:10px 14px;">
+        <div style="font-size:.74rem;font-weight:800;color:#16a34a;margin-bottom:8px;">👶 子供</div>
+        <div id="family-children-inputs" style="display:flex;flex-direction:column;gap:8px;"></div>
+        <button onclick="addFamilyChild()" style="width:100%;margin-top:8px;padding:6px;background:#f8fafc;border:1.5px dashed #bbf7d0;border-radius:8px;font-size:.72rem;font-weight:700;color:#16a34a;cursor:pointer;">＋ 子供を追加</button>
+      </div>
+    </div>
+
+    <div id="stab-display-panel" style="display:none;">
+      <div style="font-size:.72rem;color:#94a3b8;margin-bottom:12px;">表示に関する設定</div>
+      <div style="display:flex;align-items:center;justify-content:space-between;padding:10px;background:#f8fafc;border-radius:9px;margin-bottom:8px;">
+        <div><div style="font-size:.76rem;font-weight:700;">通貨表示</div><div style="font-size:.63rem;color:#94a3b8;">万円 / 円で表示</div></div>
+        <select id="setting-currency" class="form-input" style="width:auto;padding:5px 8px;font-size:.74rem;" onchange="saveDisplaySettings()">
+          <option value="man">万円</option><option value="yen">円</option>
+        </select>
+      </div>
+      <div style="display:flex;align-items:center;justify-content:space-between;padding:10px;background:#f8fafc;border-radius:9px;margin-bottom:8px;">
+        <div><div style="font-size:.76rem;font-weight:700;">投資リターン率</div><div style="font-size:.63rem;color:#94a3b8;">推移シミュレーションに使用</div></div>
+        <div style="display:flex;align-items:center;gap:4px;">
+          <input type="number" id="setting-return" value="3" min="0" max="15" step="0.5"
+            style="width:60px;border:1.5px solid var(--border);border-radius:6px;padding:4px 6px;font-size:.76rem;text-align:right;"
+            onchange="saveDisplaySettings()">
+          <span style="font-size:.72rem;color:#64748b;">%</span>
+        </div>
+      </div>
+      <div style="display:flex;align-items:center;justify-content:space-between;padding:10px;background:#f8fafc;border-radius:9px;">
+        <div><div style="font-size:.76rem;font-weight:700;">推移グラフ表示年数</div><div style="font-size:.63rem;color:#94a3b8;">何年先まで表示するか</div></div>
+        <div style="display:flex;align-items:center;gap:4px;">
+          <input type="number" id="setting-years" value="35" min="10" max="60" step="5"
+            style="width:60px;border:1.5px solid var(--border);border-radius:6px;padding:4px 6px;font-size:.76rem;text-align:right;"
+            onchange="saveDisplaySettings()">
+          <span style="font-size:.72rem;color:#64748b;">年</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- データ管理 -->
+    <div id="stab-data-panel" style="display:none;">
+      <div style="font-size:.72rem;color:#94a3b8;margin-bottom:12px;">データのエクスポート・リセット</div>
+      <div style="display:flex;flex-direction:column;gap:8px;">
+        <button onclick="exportData()" style="padding:11px;background:#f0f9ff;border:1.5px solid #bae6fd;border-radius:10px;font-size:.78rem;font-weight:700;color:#0891b2;cursor:pointer;text-align:left;">
+          📥 データをJSONでエクスポート
+        </button>
+        <label style="padding:11px;background:#f0fdf4;border:1.5px solid #bbf7d0;border-radius:10px;font-size:.78rem;font-weight:700;color:#16a34a;cursor:pointer;display:block;">
+          📤 データをJSONからインポート
+          <input type="file" accept=".json" onchange="importData(event)" style="display:none;">
+        </label>
+        <button onclick="if(confirm('すべてのBS・イベントデータをリセットしますか？'))resetAllData();"
+          style="padding:11px;background:#fef2f2;border:1.5px solid #fecaca;border-radius:10px;font-size:.78rem;font-weight:700;color:#dc2626;cursor:pointer;text-align:left;">
+          🗑 すべてのデータをリセット
+        </button>
+      </div>
+    </div>
+
+    <button onclick="closeSettings()" style="width:100%;margin-top:14px;padding:11px;background:#f1f5f9;border:none;border-radius:10px;font-size:.8rem;cursor:pointer;font-weight:700;color:#64748b;">閉じる</button>
+  </div>
+</div>
+
+<!-- イベントモーダル -->
+<div class="modal-overlay" id="event-modal" onclick="if(event.target===this)closeEventModal()">
+  <div class="modal-box">
+    <div class="modal-title">📅 ライフイベント</div>
+    <div class="modal-sub">結婚・住宅・車・転職など将来のイベントを登録</div>
+    <input type="hidden" id="ev-id">
+    <div class="form-row"><label class="form-label">イベント名</label>
+      <input type="text" id="ev-name" class="form-input" placeholder="例：マイホーム購入" list="ev-sug">
+      <datalist id="ev-sug"><option value="マイホーム購入"><option value="車の買い替え">
+        <option value="子供の結婚式（援助）"><option value="リフォーム"><option value="転職・独立">
+        <option value="海外旅行（特別）"><option value="親の介護費用"><option value="ローン完済"><option value="定年退職"></datalist></div>
+    <div class="form-row"><label class="form-label">発生年</label>
+      <input type="number" id="ev-year" class="form-input" min="2025" max="2080"></div>
+    <div class="form-row"><label class="form-label">カテゴリー</label>
+      <select id="ev-cat" class="form-input">
+        <option value="housing">🏠 住宅</option><option value="car">🚗 車</option>
+        <option value="family">👨‍👩‍👧 家族</option><option value="work">💼 仕事・収入</option>
+        <option value="travel">✈️ 旅行・趣味</option><option value="medical">🏥 医療・介護</option>
+        <option value="other">📦 その他</option></select></div>
+    <div class="form-row"><label class="form-label">費用（万円）<span style="font-size:.63rem;color:#94a3b8;"> 支出はマイナス、収入はプラス</span></label>
+      <input type="number" id="ev-amount" class="form-input" placeholder="例：-3000"></div>
+    <div class="form-row"><label class="form-label">メモ</label>
+      <input type="text" id="ev-memo" class="form-input" placeholder="任意"></div>
+    <div style="display:flex;gap:8px;margin-top:4px;">
+      <button onclick="closeEventModal()" style="flex:1;padding:11px;background:#f1f5f9;border:none;border-radius:10px;font-size:.8rem;cursor:pointer;font-weight:700;color:#64748b;">キャンセル</button>
+      <button onclick="saveEvent()" style="flex:2;padding:11px;background:var(--navy);color:#fff;border:none;border-radius:10px;font-size:.82rem;cursor:pointer;font-weight:800;">💾 保存</button>
+    </div>
+  </div>
+</div>
+
+<datalist id="bank-list">
+  <option value="三菱UFJ銀行"><option value="三井住友銀行"><option value="みずほ銀行">
+  <option value="ゆうちょ銀行"><option value="楽天銀行"><option value="PayPay銀行">
+  <option value="住信SBIネット銀行"><option value="auじぶん銀行"><option value="イオン銀行">
+  <option value="セブン銀行"><option value="楽天証券"><option value="SBI証券">
+  <option value="松井証券"><option value="マネックス証券"><option value="野村証券">
+  <option value="大和証券"><option value="auカブコム証券"><option value="フィデリティ証券">
+</datalist>
+
+<div class="toast" id="toast"></div>
+
+<script>
+// ─── ストレージ ───
+const BS_KEY      = 'lifeplan_bs_v2';   // 月次対応
+const EVENT_KEY   = 'lifeplan_events_v1';
+const OWNERS_KEY  = 'lifeplan_owners_v1';
+let BS_ALL={};          // { 'YYYY-MM': {assets,liabs} }
+let CURRENT_BS_MONTH='';
+let ASSETS=[], LIABS=[], EVENTS=[], ASSET_FILTER='all';
+let OWNER_NAMES={self:'本人',spouse:'配偶者',joint:'共有'};
+
+const ASSET_TYPES=['普通預金','定期預金','投資信託','NISA','iDeCo','株式','不動産','積立保険（解約返戻金）','終身保険','学資保険','退職金見込み','年金見込み','その他'];
+const LIAB_TYPES =['住宅ローン','自動車ローン','教育ローン','カードリボ','その他ローン','その他負債'];
+const EV_COLORS  ={housing:'#3b82f6',car:'#6366f1',family:'#ec4899',work:'#10b981',travel:'#f59e0b',medical:'#ef4444',other:'#94a3b8'};
+const EV_ICONS   ={housing:'🏠',car:'🚗',family:'👨‍👩‍👧',work:'💼',travel:'✈️',medical:'🏥',other:'📦'};
+
+function genId(){return Date.now().toString(36)+Math.random().toString(36).slice(2,5);}
+
+// カンマ整形ユーティリティ
+function fmtNum(v){
+  const n=parseFloat(String(v).replace(/,/g,''));
+  return isNaN(n)?'':n.toLocaleString('ja-JP');
+}
+function parseNum(v){return parseFloat(String(v).replace(/,/g,''))||0;}
+function onAmountInput(el, arr, idx, extra){
+  const raw=el.value.replace(/[^0-9.]/g,'');
+  const n=parseFloat(raw)||0;
+  el.value=raw?n.toLocaleString('ja-JP'):'';
+  el.setSelectionRange(el.value.length,el.value.length);
+  if(arr==='ASSETS') ASSETS[idx].amount=n;
+  else LIABS[idx].amount=n;
+  saveStorage();
+  if(extra==='nw') updateNetWorth();
+  if(extra==='loan') {updateNetWorth();renderLoanSummary();}
+}
+
+function toMonthKey(d){return d.toISOString().slice(0,7);}
+function prevMonthKey(mk){const[y,m]=mk.split('-').map(Number);return m===1?`${y-1}-12`:`${y}-${String(m-1).padStart(2,'0')}`;}
+
+function loadStorage(){
+  try{BS_ALL=JSON.parse(localStorage.getItem(BS_KEY)||'{}');}catch(e){BS_ALL={};}
+  // 今月をデフォルトに
+  const now=toMonthKey(new Date());
+  CURRENT_BS_MONTH=now;
+  loadMonthData(now);
+  try{EVENTS=JSON.parse(localStorage.getItem(EVENT_KEY)||'[]');}catch(e){EVENTS=[];}
+  try{const n=JSON.parse(localStorage.getItem(OWNERS_KEY)||'null');
+    if(n)OWNER_NAMES={...OWNER_NAMES,...n};}catch(e){}
+}
+function loadMonthData(mk){
+  const d=BS_ALL[mk];
+  ASSETS=d?.assets?JSON.parse(JSON.stringify(d.assets)):[];
+  LIABS =d?.liabs ?JSON.parse(JSON.stringify(d.liabs)):[];
+}
+function saveStorage(){
+  BS_ALL[CURRENT_BS_MONTH]={assets:ASSETS,liabs:LIABS};
+  localStorage.setItem(BS_KEY,JSON.stringify(BS_ALL));
+  localStorage.setItem(EVENT_KEY,JSON.stringify(EVENTS));
+  localStorage.setItem(OWNERS_KEY,JSON.stringify(OWNER_NAMES));
+}
+function switchBSMonth(mk){
+  CURRENT_BS_MONTH=mk;
+  loadMonthData(mk);
+  ASSET_FILTER='all';
+  renderBS();
+  renderMonthNav();
+}
+function copyFromPrevMonth(){
+  const prev=prevMonthKey(CURRENT_BS_MONTH);
+  const d=BS_ALL[prev];
+  if(!d||(!d.assets?.length&&!d.liabs?.length)){showToast('前月のデータがありません');return;}
+  if(!confirm(`${prev}のデータをコピーしますか？`))return;
+  ASSETS=JSON.parse(JSON.stringify(d.assets));
+  LIABS =JSON.parse(JSON.stringify(d.liabs));
+  saveStorage();renderBS();
+  showToast(`${prev}のデータをコピーしました`);
+}
+function getRecordedMonths(){
+  return Object.keys(BS_ALL).filter(mk=>BS_ALL[mk]?.assets?.length||BS_ALL[mk]?.liabs?.length).sort().reverse();
+}
+
+// ─── index.html 連携 ───
+function getLifeSettings(){
+  try{const d=JSON.parse(localStorage.getItem('lifePlanSim_private_v1')||'null');return d?.inputs||null;}catch(e){return null;}
+}
+function getChildren(){
+  try{const d=JSON.parse(localStorage.getItem('lifePlanSim_private_v1')||'null');
+    return(d?.children||[]).filter(c=>c.univYear>0);}catch(e){return[];}
+}
+function getKakeiboMonthly(){
+  try{const txns=JSON.parse(localStorage.getItem('kakeibo_v1')||'[]');
+    const months=[...new Set(txns.map(t=>t.monthKey))].sort().reverse().slice(0,3);
+    if(!months.length)return null;
+    let total=0,n=0;
+    months.forEach(mk=>{
+      const exp=txns.filter(t=>t.monthKey===mk&&t.type==='expense').reduce((s,t)=>s+t.amount,0);
+      const inc=txns.filter(t=>t.monthKey===mk&&t.type==='income').reduce((s,t)=>s+t.amount,0);
+      if(exp||inc){total+=inc-exp;n++;}
+    });
+    return n?{avgMonthly:Math.round(total/n),months:n}:null;}
+  catch(e){return null;}
+}
+
+// ─── 名義ユーティリティ ───
+function getOwners(){
+  const children=getChildren();
+  const owners=[{id:'self',label:OWNER_NAMES.self||'本人'}];
+  try{const d=JSON.parse(localStorage.getItem('lifePlanSim_private_v1')||'null');
+    if(d?.inputs?.spouseOn!==false)owners.push({id:'spouse',label:OWNER_NAMES.spouse||'配偶者'});}catch(e){}
+  if(!owners.find(o=>o.id==='spouse'))owners.push({id:'spouse',label:OWNER_NAMES.spouse||'配偶者'});
+  children.forEach((c,i)=>owners.push({id:'child'+i,label:OWNER_NAMES['child'+i]||c.name||`子供${i+1}`}));
+  // カスタム名義
+  (CUSTOM_OWNERS||[]).forEach(o=>owners.push({id:o.id,label:OWNER_NAMES[o.id]||o.label}));
+  owners.push({id:'joint',label:OWNER_NAMES.joint||'共有'});
+  return owners;
+}
+function ownerLabel(id){return getOwners().find(o=>o.id===id)?.label||id||'─';}
+function updateOwnerName(id,val){
+  const v=val.trim();
+  if(v) OWNER_NAMES[id]=v;
+  saveStorage();renderBS();
+  renderOwnersEditList();
+}
+
+// ─── 設定モーダル ───
+let DISPLAY_SETTINGS={return:3,years:35,currency:'man'};
+let FAMILY_SETTINGS={spouseBirth:0,children:[]};  // 家族情報
+const FAMILY_KEY='lifeplan_family_v1';
+let CUSTOM_OWNERS=[];  // [{id,label}] ユーザー追加の名義
+const DISP_KEY   ='lifeplan_display_v1';
+const CUSTOM_OWNERS_KEY='lifeplan_custom_owners_v1';
+
+function loadExtraStorage(){
+  try{const d=JSON.parse(localStorage.getItem(DISP_KEY)||'null');if(d)DISPLAY_SETTINGS={...DISPLAY_SETTINGS,...d};}catch(e){}
+  try{CUSTOM_OWNERS=JSON.parse(localStorage.getItem(CUSTOM_OWNERS_KEY)||'[]');}catch(e){CUSTOM_OWNERS=[];}
+  try{const f=JSON.parse(localStorage.getItem(FAMILY_KEY)||'null');if(f)FAMILY_SETTINGS={...FAMILY_SETTINGS,...f};}catch(e){}
+}
+function saveExtraStorage(){
+  localStorage.setItem(DISP_KEY,JSON.stringify(DISPLAY_SETTINGS));
+  localStorage.setItem(CUSTOM_OWNERS_KEY,JSON.stringify(CUSTOM_OWNERS));
+  localStorage.setItem(FAMILY_KEY,JSON.stringify(FAMILY_SETTINGS));
+}
+
+function openSettings(){
+  renderOwnersEditList();
+  renderFamilySettings();
+  document.getElementById('setting-return').value=DISPLAY_SETTINGS.return||3;
+  document.getElementById('setting-years').value=DISPLAY_SETTINGS.years||35;
+  document.getElementById('setting-currency').value=DISPLAY_SETTINGS.currency||'man';
+  switchStab('owners');
+  document.getElementById('settings-modal').style.display='block';
+}
+function closeSettings(){document.getElementById('settings-modal').style.display='none';}
+
+function switchStab(tab){
+  ['owners','family','display','data'].forEach(t=>{
+    document.getElementById('stab-'+t+'-panel').style.display=t===tab?'':'none';
+    const btn=document.getElementById('stab-'+t);
+    btn.style.background=t===tab?'var(--navy)':'transparent';
+    btn.style.color=t===tab?'#fff':'#64748b';
+  });
+}
+
+function getOwnerColorById(id){
+  const m={self:'#2563eb',spouse:'#ec4899',child0:'#10b981',child1:'#f59e0b',child2:'#8b5cf6',child3:'#0891b2',joint:'#64748b'};
+  // カスタムはローテーション
+  const customs=['#0891b2','#d97706','#7c3aed','#be185d','#1d4ed8'];
+  if(m[id])return m[id];
+  const ci=CUSTOM_OWNERS.findIndex(o=>o.id===id);
+  return ci>=0?customs[ci%customs.length]:'#94a3b8';
+}
+
+function renderOwnersEditList(){
+  const el=document.getElementById('owners-edit-list');
+  if(!el)return;
+  const baseOwners=[
+    {id:'self',  defaultLabel:'本人'},
+    {id:'spouse',defaultLabel:'配偶者'},
+    {id:'joint', defaultLabel:'共有'},
+  ];
+  // 子供（index.html設定から）
+  getChildren().forEach((c,i)=>baseOwners.push({id:'child'+i,defaultLabel:c.name||`子供${i+1}`,isChild:true}));
+  // カスタム
+  CUSTOM_OWNERS.forEach(o=>baseOwners.push({...o,isCustom:true}));
+
+  el.innerHTML=baseOwners.map((o,idx)=>{
+    const col=getOwnerColorById(o.id);
+    const current=OWNER_NAMES[o.id]||o.defaultLabel||o.label;
+    const canDelete=o.isCustom;
+    return`<div style="display:flex;align-items:center;gap:8px;padding:8px 12px;background:#f8fafc;border-radius:9px;border:1.5px solid ${col}33;">
+      <span style="width:10px;height:10px;border-radius:50%;background:${col};flex-shrink:0;display:inline-block;"></span>
+      <div style="flex:1;">
+        <div style="font-size:.64rem;color:#94a3b8;margin-bottom:2px;">${o.isChild?'子供（自動連携）':o.isCustom?'カスタム名義':'デフォルト名義'}</div>
+        <input type="text" value="${current}"
+          style="border:1.5px solid var(--border);border-radius:6px;padding:4px 8px;font-size:.78rem;font-weight:700;width:100%;color:${col};"
+          onchange="OWNER_NAMES['${o.id}']=this.value.trim()||'${o.defaultLabel||o.label}';saveStorage();renderBS();"
+          onkeydown="if(event.key==='Enter')this.blur();">
+      </div>
+      ${canDelete?`<button onclick="deleteCustomOwner('${o.id}')" style="background:none;border:none;color:#fca5a5;cursor:pointer;font-size:.9rem;padding:2px 4px;">🗑</button>`:''}
+    </div>`;
+  }).join('');
+}
+
+function addCustomOwner(){
+  const id='custom_'+genId();
+  CUSTOM_OWNERS.push({id,label:'新しい名義'});
+  OWNER_NAMES[id]='新しい名義';
+  saveStorage();saveExtraStorage();
+  renderOwnersEditList();renderBS();
+}
+function deleteCustomOwner(id){
+  CUSTOM_OWNERS=CUSTOM_OWNERS.filter(o=>o.id!==id);
+  delete OWNER_NAMES[id];
+  // この名義の口座を「共有」に変更
+  ASSETS.forEach(a=>{if(a.owner===id)a.owner='joint';});
+  LIABS.forEach(l=>{if(l.owner===id)l.owner='joint';});
+  saveStorage();saveExtraStorage();
+  renderOwnersEditList();renderBS();
+  showToast('削除しました（口座は「共有」に移動しました）');
+}
+
+function saveDisplaySettings(){
+  DISPLAY_SETTINGS.return=parseFloat(document.getElementById('setting-return').value)||3;
+  DISPLAY_SETTINGS.years=parseInt(document.getElementById('setting-years').value)||35;
+  DISPLAY_SETTINGS.currency=document.getElementById('setting-currency').value;
+  saveExtraStorage();
+}
+function renderFamilySettings(){
+  const now=new Date().getFullYear();
+  // 配偶者
+  const sb=document.getElementById('family-spouse-birth');
+  if(sb){sb.value=FAMILY_SETTINGS.spouseBirth||'';
+    const sAge=FAMILY_SETTINGS.spouseBirth?now-FAMILY_SETTINGS.spouseBirth:0;
+    const sd=document.getElementById('family-spouse-age-disp');
+    if(sd)sd.textContent=sAge>0?`（現在${sAge}歳）`:'';}
+  // 子供
+  if(!FAMILY_SETTINGS.children.length&&getChildren().length){
+    // index.htmlの子供データから初期値をセット
+    FAMILY_SETTINGS.children=getChildren().map((c,i)=>({
+      name:c.name||`子供${i+1}`,
+      birthYear:c.birthYear||0
+    }));
+  }
+  if(!FAMILY_SETTINGS.children.length) FAMILY_SETTINGS.children=[{name:'子供1',birthYear:0}];
+  const el=document.getElementById('family-children-inputs');
+  if(!el)return;
+  el.innerHTML=FAMILY_SETTINGS.children.map((ch,i)=>`
+    <div style="display:flex;align-items:center;gap:6px;background:#fff;border-radius:8px;padding:6px 10px;border:1px solid #bbf7d0;">
+      <input type="text" value="${ch.name||''}" placeholder="名前"
+        style="border:1.5px solid var(--border);border-radius:6px;padding:4px 8px;font-size:.74rem;flex:1;"
+        onchange="FAMILY_SETTINGS.children[${i}].name=this.value;saveFamilySettings();">
+      <label style="font-size:.66rem;color:#64748b;white-space:nowrap;">生まれ年</label>
+      <input type="number" value="${ch.birthYear||''}" placeholder="例：2018" min="1990" max="${now}"
+        style="border:1.5px solid var(--border);border-radius:6px;padding:4px 7px;font-size:.74rem;width:80px;"
+        onchange="FAMILY_SETTINGS.children[${i}].birthYear=parseInt(this.value)||0;saveFamilySettings();">
+      <span style="font-size:.66rem;color:#16a34a;">${ch.birthYear?`${now-ch.birthYear}歳`:''}</span>
+      <button onclick="FAMILY_SETTINGS.children.splice(${i},1);saveFamilySettings();renderFamilySettings();"
+        style="background:none;border:none;color:#fca5a5;cursor:pointer;font-size:.85rem;">🗑</button>
+    </div>`).join('');
+}
+function addFamilyChild(){
+  FAMILY_SETTINGS.children.push({name:`子供${FAMILY_SETTINGS.children.length+1}`,birthYear:0});
+  saveFamilySettings();renderFamilySettings();
+}
+function saveFamilySettings(){
+  const sb=document.getElementById('family-spouse-birth');
+  if(sb)FAMILY_SETTINGS.spouseBirth=parseInt(sb.value)||0;
+  // 年齢表示更新
+  const now=new Date().getFullYear();
+  const sAge=FAMILY_SETTINGS.spouseBirth?now-FAMILY_SETTINGS.spouseBirth:0;
+  const sd=document.getElementById('family-spouse-age-disp');
+  if(sd)sd.textContent=sAge>0?`（現在${sAge}歳）`:'';
+  saveExtraStorage();
+  // 年表を再描画
+  if(document.getElementById('view-timeline').style.display!=='none')renderTimeline();
+}
+
+function exportData(){
+  const data={bsAll:BS_ALL,assets:ASSETS,liabs:LIABS,events:EVENTS,ownerNames:OWNER_NAMES,customOwners:CUSTOM_OWNERS,displaySettings:DISPLAY_SETTINGS};
+  const blob=new Blob([JSON.stringify(data,null,2)],{type:'application/json'});
+  const a=document.createElement('a');a.href=URL.createObjectURL(blob);
+  a.download='lifeplan_'+new Date().toISOString().slice(0,10)+'.json';a.click();
+  showToast('エクスポートしました');
+}
+function importData(e){
+  const file=e.target.files[0];if(!file)return;
+  const r=new FileReader();
+  r.onload=ev=>{
+    try{
+      const d=JSON.parse(ev.target.result);
+      if(d.bsAll)BS_ALL=d.bsAll;
+      if(d.assets){ASSETS=d.assets;BS_ALL[CURRENT_BS_MONTH]={assets:ASSETS,liabs:LIABS};}
+      if(d.liabs){LIABS=d.liabs;BS_ALL[CURRENT_BS_MONTH]={assets:ASSETS,liabs:LIABS};}
+      if(d.events)EVENTS=d.events;
+      if(d.ownerNames)OWNER_NAMES={...OWNER_NAMES,...d.ownerNames};
+      if(d.customOwners)CUSTOM_OWNERS=d.customOwners;
+      if(d.displaySettings)DISPLAY_SETTINGS={...DISPLAY_SETTINGS,...d.displaySettings};
+      saveStorage();saveExtraStorage();renderBS();renderOwnersEditList();
+      showToast('インポートしました');
+    }catch(err){showToast('ファイルの読み込みに失敗しました');}
+  };r.readAsText(file);
+}
+function resetAllData(){
+  BS_ALL={};ASSETS=[];LIABS=[];EVENTS=[];CUSTOM_OWNERS=[];
+  OWNER_NAMES={self:'本人',spouse:'配偶者',joint:'共有'};
+  saveStorage();saveExtraStorage();renderBS();
+  showToast('リセットしました');closeSettings();
+}
+function ownerColor(id){
+  const m={self:'#2563eb',spouse:'#ec4899',child0:'#10b981',child1:'#f59e0b',child2:'#8b5cf6',child3:'#0891b2',joint:'#64748b'};
+  return m[id]||'#94a3b8';
+}
+
+// ─── BS 表示 ───
+function renderBS(){
+  renderMonthNav();
+  renderTable('asset');
+  renderTable('liab');
+  renderLoanSummary();
+  updateNetWorth();
+}
+function renderMonthNav(){
+  const [y,m]=CURRENT_BS_MONTH.split('-');
+  document.getElementById('bs-month-label').textContent=`${y}年${parseInt(m)}月`;
+  const records=getRecordedMonths();
+  const hasData=BS_ALL[CURRENT_BS_MONTH]?.assets?.length||BS_ALL[CURRENT_BS_MONTH]?.liabs?.length;
+  document.getElementById('bs-record-badge').textContent=hasData?'✅ 記録済み':'未記録';
+  // ジャンプ選択
+  const sel=document.getElementById('bs-month-jump');
+  sel.innerHTML='<option value="">記録月一覧</option>'+
+    records.map(mk=>`<option value="${mk}" ${mk===CURRENT_BS_MONTH?'selected':''}>${mk.replace('-','年')}月</option>`).join('');
+  // 前月比
+  const prev=prevMonthKey(CURRENT_BS_MONTH);
+  const prevData=BS_ALL[prev];
+  const diffEl=document.getElementById('bs-month-diff');
+  if(prevData&&hasData){
+    const prevAsset=prevData.assets?.reduce((s,a)=>s+(a.amount||0),0)||0;
+    const prevLiab=prevData.liabs?.reduce((s,l)=>s+(l.amount||0),0)||0;
+    const prevNW=prevAsset-prevLiab;
+    const curAsset=ASSETS.reduce((s,a)=>s+(a.amount||0),0);
+    const curLiab=LIABS.reduce((s,l)=>s+(l.amount||0),0);
+    const curNW=curAsset-curLiab;
+    const diff=curNW-prevNW;
+    const r10=(v)=>Math.round(v/10000*10)/10;
+    diffEl.style.display='';
+    diffEl.innerHTML=`<div style="display:flex;gap:10px;flex-wrap:wrap;font-size:.68rem;">
+      <span style="color:#64748b;">前月比（${prev.replace('-','年')}月）：</span>
+      <span style="font-weight:800;color:${diff>=0?'#16a34a':'#dc2626'};">純資産 ${diff>=0?'+':''}${r10(diff)}万円</span>
+      <span style="color:#94a3b8;">資産 ${curAsset>=prevAsset?'+':''}${r10(curAsset-prevAsset)}万 ／ 負債 ${curLiab>=prevLiab?'+':''}${r10(curLiab-prevLiab)}万</span>
+    </div>`;
+  } else { diffEl.style.display='none'; }
+}
+function changeBS(dir){
+  const [y,m]=CURRENT_BS_MONTH.split('-').map(Number);
+  let ny=y,nm=m+dir;
+  if(nm>12){ny++;nm=1;}else if(nm<1){ny--;nm=12;}
+  switchBSMonth(`${ny}-${String(nm).padStart(2,'0')}`);
+}
+function renderOwnerNameEditor(){
+  const el=document.getElementById('owner-name-editor');
+  if(!el)return;
+  const owners=getOwners();
+  el.innerHTML=owners.map(o=>`
+    <div style="display:flex;align-items:center;gap:6px;background:#f8fafc;border:1.5px solid ${ownerColor(o.id)}44;border-radius:10px;padding:6px 10px;">
+      <span style="width:10px;height:10px;border-radius:50%;background:${ownerColor(o.id)};flex-shrink:0;display:inline-block;"></span>
+      <input type="text" value="${o.label}"
+        style="border:none;background:transparent;font-size:.76rem;font-weight:700;color:${ownerColor(o.id)};width:${Math.max(60,o.label.length*12)}px;outline:none;cursor:pointer;"
+        onfocus="this.style.background='#fff';this.style.border='1px solid #e2e8f0';this.style.borderRadius='5px';this.style.padding='2px 5px';"
+        onblur="this.style.background='transparent';this.style.border='none';this.style.padding='0';updateOwnerName('${o.id}',this.value);"
+        onkeydown="if(event.key==='Enter')this.blur();"
+        title="クリックして名前を変更">
+    </div>`).join('');
+}
+
+// ── ローン計算 ──
+function calcLoan(principal, annualRate, endDate){
+  // principal は円単位
+  if(!principal||!annualRate||!endDate)return null;
+  const now=new Date();
+  const end=new Date(endDate+'-01');
+  const months=Math.max(1,Math.round((end-now)/(1000*60*60*24*30.44)));
+  const r=annualRate/100/12;
+  let monthly;
+  if(r===0){
+    monthly=Math.round(principal/months);
+  } else {
+    monthly=Math.round(principal*r*Math.pow(1+r,months)/(Math.pow(1+r,months)-1));
+  }
+  const totalPay=monthly*months;
+  const totalInterest=Math.round((totalPay-principal)/10000);
+  return{monthly,totalInterest,months,totalPay};
+}
+
+// ── ローンサマリーを負債カード下部に表示 ──
+// ─── 借り換えアフィリリンク設定（URLを実際のアフィリURLに変更してください）───
+const REFI_AFFILIATES=[
+  {name:'モゲチェック',     label:'無料で一括比較',url:'https://mogecheck.jp/',         color:'#2563eb',icon:'🏦'},
+  {name:'ARUHI',          label:'全期間固定最安値',url:'https://aruhi-corp.co.jp/',    color:'#dc2626',icon:'🏠'},
+  {name:'住信SBIネット銀行',label:'変動0.298%〜',  url:'https://www.netbk.co.jp/',     color:'#0891b2',icon:'💳'},
+  {name:'auじぶん銀行',    label:'変動0.169%〜',  url:'https://www.jibunbank.co.jp/', color:'#f59e0b',icon:'📱'},
+];
+
+function calcRefinanceSaving(principal, currentRate, endDate, newRate=0.5){
+  const c1=calcLoan(principal,currentRate,endDate);
+  const c2=calcLoan(principal,newRate,endDate);
+  if(!c1||!c2)return null;
+  const monthlySaving=c1.monthly-c2.monthly;
+  const totalSaving=Math.round((c1.totalInterest-c2.totalInterest)*10)/10;
+  return{monthlySaving,totalSaving,newMonthly:c2.monthly};
+}
+
+function renderLoanSummary(){
+  const loanTypes=['住宅ローン','自動車ローン','教育ローン','その他ローン'];
+  const loans=LIABS.filter(l=>loanTypes.includes(l.type)&&l.amount>0&&l.rate>0&&l.endDate);
+  const el=document.getElementById('loan-summary');
+  if(!el)return;
+  if(!loans.length){el.innerHTML='';return;}
+
+  // 住宅ローンのみアフィリ表示
+  const mortgages=loans.filter(l=>l.type==='住宅ローン');
+
+  const rows=loans.map(l=>{
+    const c=calcLoan(l.amount,l.rate,l.endDate);
+    if(!c)return'';
+    const col=ownerColor(l.owner||'self');
+    // 借り換え節約試算（住宅ローンのみ・金利1%超の場合）
+    const showRefi=l.type==='住宅ローン'&&l.rate>=1.0;
+    const refi=showRefi?calcRefinanceSaving(l.amount,l.rate,l.endDate,0.5):null;
+    return`<div style="border-radius:12px;border:1.5px solid #fed7aa;overflow:hidden;margin-bottom:8px;">
+      <!-- ローン基本情報 -->
+      <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;padding:10px 14px;background:#fff7ed;">
+        <span style="width:8px;height:8px;border-radius:50%;background:${col};flex-shrink:0;display:inline-block;"></span>
+        <span style="font-size:.74rem;font-weight:700;color:#1e293b;">${l.bank||l.type}</span>
+        <span style="font-size:.66rem;background:#fed7aa;padding:2px 7px;border-radius:8px;color:#92400e;font-weight:700;">${l.type}</span>
+        <span style="font-size:.66rem;color:#64748b;">金利${l.rate}% ／ ${l.endDate}まで</span>
+        <div style="margin-left:auto;display:flex;gap:12px;align-items:center;">
+          <div style="text-align:right;">
+            <div style="font-size:.58rem;color:#94a3b8;">月返済額</div>
+            <div style="font-size:.86rem;font-weight:900;color:#ea580c;">${c.monthly.toLocaleString()}<span style="font-size:.6rem;">円</span></div>
+          </div>
+          <div style="text-align:right;">
+            <div style="font-size:.58rem;color:#94a3b8;">残り利息</div>
+            <div style="font-size:.86rem;font-weight:900;color:#dc2626;">${c.totalInterest.toLocaleString()}<span style="font-size:.6rem;">万円</span></div>
+          </div>
+          <div style="text-align:right;">
+            <div style="font-size:.58rem;color:#94a3b8;">残期間</div>
+            <div style="font-size:.8rem;font-weight:700;color:#64748b;">${Math.floor(c.months/12)}年${c.months%12}ヶ月</div>
+          </div>
+        </div>
+      </div>
+      ${refi&&refi.totalSaving>0?`
+      <!-- 借り換え節約バナー -->
+      <div style="padding:10px 14px;background:linear-gradient(135deg,#ecfdf5,#f0fdf4);border-top:1px solid #bbf7d0;">
+        <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;flex-wrap:wrap;">
+          <div style="flex:1;">
+            <div style="font-size:.7rem;font-weight:900;color:#15803d;">💡 借り換えシミュレーション（金利0.5%に変更した場合）</div>
+            <div style="display:flex;gap:14px;margin-top:4px;">
+              <div><span style="font-size:.6rem;color:#94a3b8;">月々の節約</span> <strong style="color:#16a34a;font-size:.82rem;">▼${refi.monthlySaving.toLocaleString()}円/月</strong></div>
+              <div><span style="font-size:.6rem;color:#94a3b8;">総利息の節約</span> <strong style="color:#16a34a;font-size:.82rem;">▼${refi.totalSaving.toLocaleString()}万円</strong></div>
+              <div><span style="font-size:.6rem;color:#94a3b8;">新月返済額</span> <span style="color:#0891b2;font-size:.78rem;">${refi.newMonthly.toLocaleString()}円</span></div>
+            </div>
+          </div>
+        </div>
+        <!-- アフィリボタン -->
+        <div style="font-size:.63rem;color:#94a3b8;margin-bottom:6px;">🔗 借り換え先を比較する（外部サイト）</div>
+        <div style="display:flex;flex-wrap:wrap;gap:6px;">
+          ${REFI_AFFILIATES.map(a=>`
+          <a href="${a.url}" target="_blank" rel="noopener"
+            style="display:flex;align-items:center;gap:5px;padding:6px 12px;background:#fff;border:1.5px solid ${a.color};border-radius:8px;text-decoration:none;font-size:.68rem;font-weight:700;color:${a.color};transition:.15s;"
+            onmouseover="this.style.background='${a.color}';this.style.color='#fff';"
+            onmouseout="this.style.background='#fff';this.style.color='${a.color}';">
+            ${a.icon} ${a.name}<span style="font-size:.58rem;opacity:.8;">${a.label}</span>
+          </a>`).join('')}
+        </div>
+        <div style="font-size:.56rem;color:#94a3b8;margin-top:6px;">※ 上記は試算値です。実際の金利・諸費用は各金融機関でご確認ください。</div>
+      </div>`:''}
+    </div>`;
+  }).join('');
+
+  el.innerHTML=`<div style="margin-top:12px;">
+    <div style="font-size:.78rem;font-weight:900;color:#f97316;margin-bottom:8px;">🏠 ローン返済計算</div>
+    ${rows}
+  </div>`;
+}
+
+function renderTable(kind){
+  if(kind==='asset') renderAssetTable();
+  else               renderLiabTable();
+}
+
+function renderAssetTable(){
+  const tbl=document.getElementById('asset-table');
+  const owners=getOwners();
+  // フィルターバー
+  const fb=document.getElementById('asset-filter-bar');
+  const oids=[...new Set(ASSETS.map(a=>a.owner||'self'))];
+  const bs=(active,col)=>`font-size:.62rem;padding:3px 10px;border-radius:20px;border:1.5px solid ${active?col:'#e2e8f0'};background:${active?col:'#f8fafc'};color:${active?'#fff':col};cursor:pointer;font-weight:700;`;
+  fb.innerHTML=`<button onclick="ASSET_FILTER='all';renderAssetTable();" style="${bs(ASSET_FILTER==='all','#1a2b4a')}color:${ASSET_FILTER==='all'?'#fff':'#475569'};">全員</button>`+
+    oids.map(oid=>`<button onclick="ASSET_FILTER='${oid}';renderAssetTable();" style="${bs(ASSET_FILTER===oid,ownerColor(oid))}">${ownerLabel(oid)}</button>`).join('');
+  const rows=ASSET_FILTER!=='all'?ASSETS.filter(a=>(a.owner||'self')===ASSET_FILTER):ASSETS;
+  const TH='padding:7px 8px;text-align:left;font-size:.62rem;color:var(--muted);white-space:nowrap;border-bottom:2px solid var(--border);';
+  tbl.innerHTML=`<thead><tr style="background:#f8fafc;">
+    <th style="${TH}">名義</th><th style="${TH}">金融機関・口座名</th>
+    <th style="${TH}">種別</th><th style="${TH};text-align:right;">残高（円）</th>
+    <th style="${TH}">メモ</th><th style="padding:4px;border-bottom:2px solid var(--border);"></th>
+  </tr></thead><tbody>`+
+  (rows.length ? rows.map(item=>{
+    const i=ASSETS.indexOf(item);
+    const col=ownerColor(item.owner||'self');
+    return`<tr onmouseover="this.style.background='#fafafa'" onmouseout="this.style.background=''">
+      <td style="padding:5px 8px;border-bottom:1px solid #f1f5f9;">
+        <select style="border:1.5px solid ${col};border-radius:6px;padding:3px 4px;font-size:.63rem;font-weight:700;color:${col};background:#fff;max-width:72px;"
+          onchange="ASSETS[${i}].owner=this.value;saveStorage();renderBS();">
+          ${owners.map(o=>`<option value="${o.id}" ${(item.owner||'self')===o.id?'selected':''}>${o.label}</option>`).join('')}
+        </select>
+      </td>
+      <td style="padding:5px 8px;border-bottom:1px solid #f1f5f9;">
+        <input type="text" value="${item.bank||''}" list="bank-list" placeholder="金融機関名"
+          style="border:1.5px solid var(--border);border-radius:6px;padding:4px 8px;font-size:.74rem;width:100%;min-width:90px;"
+          onchange="ASSETS[${i}].bank=this.value;saveStorage();">
+      </td>
+      <td style="padding:5px 8px;border-bottom:1px solid #f1f5f9;">
+        <select style="border:1.5px solid var(--border);border-radius:6px;padding:4px 5px;font-size:.72rem;background:#fff;"
+          onchange="ASSETS[${i}].type=this.value;saveStorage();">
+          ${ASSET_TYPES.map(t=>`<option value="${t}" ${item.type===t?'selected':''}>${t}</option>`).join('')}
+        </select>
+      </td>
+      <td style="padding:5px 8px;border-bottom:1px solid #f1f5f9;text-align:right;">
+        <input type="text" inputmode="numeric" value="${fmtNum(item.amount)}" placeholder="0"
+          style="border:1.5px solid var(--border);border-radius:6px;padding:4px 7px;font-size:.78rem;font-weight:700;width:96px;text-align:right;"
+          oninput="onAmountInput(this,'ASSETS',${i},'nw')">
+      </td>
+      <td style="padding:5px 8px;border-bottom:1px solid #f1f5f9;">
+        <input type="text" value="${item.memo||''}" placeholder="任意"
+          style="border:1.5px solid var(--border);border-radius:6px;padding:4px 7px;font-size:.67rem;color:#94a3b8;width:100%;min-width:60px;"
+          onchange="ASSETS[${i}].memo=this.value;saveStorage();">
+      </td>
+      <td style="padding:5px 4px;border-bottom:1px solid #f1f5f9;text-align:center;">
+        <button onclick="ASSETS.splice(${i},1);saveStorage();renderBS();"
+          style="background:none;border:none;color:#fca5a5;cursor:pointer;font-size:.9rem;padding:2px 4px;" title="削除">🗑</button>
+      </td>
+    </tr>`;
+  }).join('') : `<tr><td colspan="6" style="padding:18px;text-align:center;color:#94a3b8;font-size:.76rem;">＋ボタンから口座を追加してください</td></tr>`)+
+  `</tbody>`;
+  const total=ASSETS.reduce((s,a)=>s+(a.amount||0),0);
+  const totalMan=Math.round(total/10000*10)/10;
+  document.getElementById('asset-total').textContent=total.toLocaleString()+'円（'+totalMan+'万円）';
+  document.getElementById('total-asset-disp').textContent=totalMan+'万円';
+  renderOwnerBreakdown('asset-owner-breakdown',ASSETS);
+}
+
+function renderLiabTable(){
+  const tbl=document.getElementById('liab-table');
+  const owners=getOwners();
+  const TH='padding:7px 8px;text-align:left;font-size:.62rem;color:var(--muted);white-space:nowrap;border-bottom:2px solid var(--border);';
+  tbl.innerHTML=`<thead><tr style="background:#f8fafc;">
+    <th style="${TH}">名義</th><th style="${TH}">金融機関・口座名</th>
+    <th style="${TH}">種別</th><th style="${TH};text-align:right;">残高</th>
+    <th style="${TH}"><span style="color:#d97706;">金利</span> / <span style="color:#2563eb;">終了年月</span></th>
+    <th style="${TH}">返済計算</th>
+    <th style="padding:4px;border-bottom:2px solid var(--border);"></th>
+  </tr></thead><tbody>`+
+  (LIABS.length ? LIABS.map((item,i)=>{
+    const col=ownerColor(item.owner||'self');
+    const isLoan=['住宅ローン','自動車ローン','教育ローン','その他ローン'].includes(item.type);
+    const lc=isLoan?calcLoan(item.amount||0,item.rate||0,item.endDate||''):null;
+    return`<tr onmouseover="this.style.background='#fafafa'" onmouseout="this.style.background=''">
+      <td style="padding:5px 8px;border-bottom:1px solid #f1f5f9;">
+        <select style="border:1.5px solid ${col};border-radius:6px;padding:3px 4px;font-size:.63rem;font-weight:700;color:${col};background:#fff;max-width:72px;"
+          onchange="LIABS[${i}].owner=this.value;saveStorage();renderBS();">
+          ${owners.map(o=>`<option value="${o.id}" ${(item.owner||'self')===o.id?'selected':''}>${o.label}</option>`).join('')}
+        </select>
+      </td>
+      <td style="padding:5px 8px;border-bottom:1px solid #f1f5f9;">
+        <input type="text" value="${item.bank||''}" list="bank-list" placeholder="金融機関名"
+          style="border:1.5px solid var(--border);border-radius:6px;padding:4px 8px;font-size:.74rem;width:100%;min-width:90px;"
+          onchange="LIABS[${i}].bank=this.value;saveStorage();">
+      </td>
+      <td style="padding:5px 8px;border-bottom:1px solid #f1f5f9;">
+        <select style="border:1.5px solid var(--border);border-radius:6px;padding:4px 5px;font-size:.72rem;background:#fff;"
+          onchange="LIABS[${i}].type=this.value;saveStorage();renderLiabTable();">
+          ${LIAB_TYPES.map(t=>`<option value="${t}" ${item.type===t?'selected':''}>${t}</option>`).join('')}
+        </select>
+      </td>
+      <td style="padding:5px 8px;border-bottom:1px solid #f1f5f9;text-align:right;">
+        <input type="text" inputmode="numeric" value="${fmtNum(item.amount)}" placeholder="0"
+          style="border:1.5px solid var(--border);border-radius:6px;padding:4px 7px;font-size:.78rem;font-weight:700;width:96px;text-align:right;"
+          oninput="onAmountInput(this,'LIABS',${i},'loan')">
+      </td>
+      <td style="padding:5px 8px;border-bottom:1px solid #f1f5f9;">
+        ${isLoan?`<div style="display:flex;align-items:center;gap:4px;margin-bottom:4px;">
+          <input type="number" value="${item.rate||''}" min="0" max="20" step="0.01" placeholder="金利%"
+            style="border:1.5px solid #fde68a;border-radius:6px;padding:3px 6px;font-size:.72rem;width:64px;text-align:right;background:#fefce8;"
+            oninput="LIABS[${i}].rate=parseFloat(this.value)||0;saveStorage();renderLoanSummary();">
+          <span style="font-size:.62rem;color:#94a3b8;">%</span>
+        </div>
+        <input type="month" value="${item.endDate||''}"
+          style="border:1.5px solid #bfdbfe;border-radius:6px;padding:3px 5px;font-size:.65rem;background:#eff6ff;width:100%;"
+          onchange="LIABS[${i}].endDate=this.value;saveStorage();renderLoanSummary();">`
+        :'<span style="font-size:.63rem;color:#94a3b8;">─</span>'}
+      </td>
+      <td style="padding:5px 8px;border-bottom:1px solid #f1f5f9;">
+        ${isLoan?(lc?`<div style="background:#fff7ed;border-radius:8px;padding:5px 8px;font-size:.63rem;line-height:1.8;">
+          <div>月返済: <strong style="color:#ea580c;">${lc.monthly.toLocaleString()}円</strong></div>
+          <div>残利息: <strong style="color:#dc2626;">${lc.totalInterest.toLocaleString()}万円</strong></div>
+          <div>残期間: <span style="color:#64748b;">${Math.floor(lc.months/12)}年${lc.months%12}ヶ月</span></div>
+        </div>`:'<span style="font-size:.62rem;color:#94a3b8;">金利・終了年月を入力</span>')
+        :'<input type="text" placeholder="メモ" value="'+(item.memo||'')+'" style=\"border:1.5px solid var(--border);border-radius:6px;padding:4px 7px;font-size:.67rem;color:#94a3b8;width:100%;\" onchange=\"LIABS['+i+'].memo=this.value;saveStorage();\">'}
+      </td>
+      <td style="padding:5px 4px;border-bottom:1px solid #f1f5f9;text-align:center;">
+        <button onclick="LIABS.splice(${i},1);saveStorage();renderBS();"
+          style="background:none;border:none;color:#fca5a5;cursor:pointer;font-size:.9rem;padding:2px 4px;" title="削除">🗑</button>
+      </td>
+    </tr>`;
+  }).join('') : `<tr><td colspan="7" style="padding:18px;text-align:center;color:#94a3b8;font-size:.76rem;">＋ボタンから負債を追加してください</td></tr>`)+
+  `</tbody>`;
+  const total=LIABS.reduce((s,l)=>s+(l.amount||0),0);
+  const totalMan=Math.round(total/10000*10)/10;
+  document.getElementById('liab-total').textContent=total.toLocaleString()+'円（'+totalMan+'万円）';
+  document.getElementById('total-liab-disp').textContent=totalMan+'万円';
+  renderOwnerBreakdown('liab-owner-breakdown',LIABS);
+  renderLoanSummary();
+}
+
+function addAccount(kind){
+  const arr=kind==='asset'?ASSETS:LIABS;
+  arr.push({id:genId(),owner:'self',bank:'',type:kind==='asset'?'普通預金':'住宅ローン',amount:0,memo:''});
+  saveStorage();if(kind==='asset')ASSET_FILTER='all';renderBS();
+  setTimeout(()=>{const t=document.getElementById(kind+'-table');
+    const rows=t?.querySelectorAll('tbody tr');
+    if(rows?.length)rows[rows.length-1].scrollIntoView({behavior:'smooth',block:'nearest'});},100);
+}
+
+function renderOwnerBreakdown(elId,items){
+  const el=document.getElementById(elId);if(!el)return;
+  const owners=getOwners();const byOwner={};
+  items.forEach(it=>{const o=it.owner||'self';byOwner[o]=(byOwner[o]||0)+(it.amount||0);});
+  const rows=owners.filter(o=>byOwner[o.id]>0);
+  if(rows.length<=1){el.innerHTML='';return;}
+  el.innerHTML=`<div style="display:flex;flex-wrap:wrap;gap:6px;padding-top:8px;">`+
+    rows.map(o=>`<div style="display:flex;align-items:center;gap:5px;background:#f8fafc;border:1.5px solid ${ownerColor(o.id)}44;border-radius:8px;padding:4px 10px;">
+      <span style="width:8px;height:8px;border-radius:50%;background:${ownerColor(o.id)};display:inline-block;flex-shrink:0;"></span>
+      <span style="font-size:.68rem;font-weight:700;color:${ownerColor(o.id)};">${o.label}</span>
+      <span style="font-size:.74rem;font-weight:800;color:var(--navy);">${Math.round((byOwner[o.id]||0)/10000*10)/10}万</span>
+    </div>`).join('')+`</div>`;
+}
+
+function updateNetWorth(){
+  const assetYen=ASSETS.reduce((s,a)=>s+(a.amount||0),0);
+  const liabYen =LIABS.reduce((s,l)=>s+(l.amount||0),0);
+  const netYen=assetYen-liabYen;
+  const toMan=(v)=>Math.round(v/10000*10)/10;
+  const el=document.getElementById('net-worth-disp');
+  el.textContent=(netYen>=0?'':'-')+Math.abs(toMan(netYen)).toLocaleString()+'万円';
+  el.style.color=netYen>=0?'#4ade80':'#f87171';
+  // 名義別純資産（万円表示）
+  const owners=getOwners();const byOwner={};
+  ASSETS.forEach(a=>{const o=a.owner||'self';byOwner[o]=(byOwner[o]||0)+(a.amount||0);});
+  LIABS.forEach(l=>{const o=l.owner||'self';byOwner[o]=(byOwner[o]||0)-(l.amount||0);});
+  const rows=owners.filter(o=>byOwner[o.id]);
+  document.getElementById('owner-nw-breakdown').innerHTML=rows.length>1?
+    `<div style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:8px;">`+
+    rows.map(o=>{const vm=toMan(byOwner[o.id]||0);
+      return`<div style="display:flex;align-items:center;gap:6px;background:#f8fafc;border:1.5px solid ${ownerColor(o.id)}44;border-radius:10px;padding:6px 12px;">
+      <span style="width:9px;height:9px;border-radius:50%;background:${ownerColor(o.id)};display:inline-block;flex-shrink:0;"></span>
+      <span style="font-size:.7rem;font-weight:700;color:${ownerColor(o.id)};">${o.label}</span>
+      <span style="font-size:.8rem;font-weight:900;color:${vm>=0?'#16a34a':'#dc2626'};">${vm>=0?'':'-'}${Math.abs(vm).toLocaleString()}万</span>
+    </div>`;}).join('')+`</div>`:'';
+  // PLシンク
+  const pl=getKakeiboMonthly();
+  const syncEl=document.getElementById('pl-sync-info');
+  if(pl){syncEl.style.display='block';
+    document.getElementById('pl-sync-text').textContent=
+      `家計管理より：月次余剰 平均 ${(pl.avgMonthly/10000).toFixed(1)}万円/月（年換算 ${(pl.avgMonthly*12/10000).toFixed(0)}万円）〔直近${pl.months}ヶ月平均〕`;}
+}
+
+// ─── 年表 ───
+function renderTimeline(){
+  const settings=getLifeSettings();
+  const children=getChildren();
+  const thisYear=new Date().getFullYear();
+  const ownerAge=parseInt(settings?.ownerAge)||35;
+  const retireYear=(thisYear-ownerAge)+parseInt(settings?.retireAge||65);
+  const endYear=Math.max(retireYear+10,thisYear+35);
+  const years=Array.from({length:endYear-thisYear+1},(_,i)=>thisYear+i);
+  const COL=68;
+
+  // 行定義
+  const rows=[
+    {label:'👤 あなた',cells:years.map(yr=>({label:`${Number(ownerAge)+(yr-thisYear)}歳`,color:''}))},
+  ];
+  // 配偶者行（FAMILY_SETTINGS から）
+  const spBirth=FAMILY_SETTINGS.spouseBirth||0;
+  if(spBirth>0){
+    const spName=OWNER_NAMES.spouse||'配偶者';
+    rows.push({label:`👫 ${spName}`,cells:years.map(yr=>{
+      const age=yr-spBirth;
+      if(age<0)return{label:'',color:''};
+      const retireAge=parseInt(settings?.retireAge||65);
+      if(yr===spBirth+retireAge)return{label:'🎉定年',color:'#fef9c3'};
+      return{label:`${age}歳`,color:''};
+    })});
+  }
+  // 子供行（FAMILY_SETTINGS 優先、なければ index.html の children）
+  const familyKids=FAMILY_SETTINGS.children.filter(c=>c.birthYear>0);
+  const sourceKids=familyKids.length?familyKids:children.filter(c=>c.birthYear>0);
+  sourceKids.forEach((ch,ci)=>{
+    const name=ch.name||`子供${ci+1}`;
+    const bYear=ch.birthYear||0;
+    // index.htmlのデータとマッチングしてunivYearを取得
+    const idxChild=children.find(c=>(c.name===ch.name)||(c.birthYear===bYear))||children[ci];
+    const uYear=idxChild?.univYear||0;
+    const uEnd=uYear+(idxChild?.schoolYears||4);
+    rows.push({label:`👶 ${name}`,cells:years.map(yr=>{
+      const age=yr-bYear;
+      if(age<0||age>26)return{label:'',color:''};
+      if(age===3) return{label:'🎒幼稚園',color:'#fce7f3'};
+      if(age===6) return{label:'🏫小入学',color:'#dbeafe'};
+      if(age===12)return{label:'🏫中入学',color:'#d1fae5'};
+      if(age===15)return{label:'🏫高入学',color:'#fef9c3'};
+      if(uYear&&yr===uYear)return{label:'🎓大入学',color:'#ede9fe'};
+      if(uYear&&yr===uEnd) return{label:'🎓卒業',color:'#fce7f3'};
+      return{label:`${age}歳`,color:''};
+    })});
+  });
+  if(EVENTS.length){
+    rows.push({label:'📅 イベント',cells:years.map(yr=>{
+      const evs=EVENTS.filter(e=>e.year===yr);
+      if(!evs.length)return{label:'',color:''};
+      return{label:EV_ICONS[evs[0].cat]+(evs[0].name.length>4?evs[0].name.slice(0,4)+'…':evs[0].name),
+        color:EV_COLORS[evs[0].cat]+'33',title:evs.map(e=>`${EV_ICONS[e.cat]}${e.name}(${e.amount>0?'+':''}${e.amount}万)`).join(' ')};
+    })});
+    rows.push({label:'💰 費用',cells:years.map(yr=>{
+      const tot=EVENTS.filter(e=>e.year===yr).reduce((s,e)=>s+(e.amount||0),0);
+      return{label:tot?((tot>0?'+':'')+tot+'万'):'',color:tot<0?'#fee2e2':tot>0?'#dcfce7':''};
+    })});
+  }
+  rows.push({label:'🌙 老後',cells:years.map(yr=>
+    yr===retireYear?{label:'🎉定年',color:'#fef9c3'}:
+    yr===retireYear+5?{label:'年金開始',color:'#dcfce7'}:{label:'',color:''})});
+
+  const LABEL_W=108;
+  let html=`<div style="display:flex;min-width:${LABEL_W+years.length*COL}px;">`;
+  // ラベル列
+  html+=`<div style="min-width:${LABEL_W}px;flex-shrink:0;border-right:2px solid var(--border);">`;
+  html+=`<div style="height:30px;border-bottom:2px solid var(--border);"></div>`;
+  rows.forEach(r=>html+=`<div style="height:36px;display:flex;align-items:center;padding-right:8px;font-size:.68rem;font-weight:700;color:var(--navy);border-bottom:1px solid #f1f5f9;">${r.label}</div>`);
+  html+=`</div>`;
+  // 年列
+  html+=`<div style="display:flex;">`;
+  years.forEach((yr,yi)=>{
+    const isNow=yr===thisYear;
+    html+=`<div style="min-width:${COL}px;flex-shrink:0;border-right:1px solid #f1f5f9;${isNow?'background:#eff6ff;':''}" >`;
+    html+=`<div style="height:30px;display:flex;align-items:center;justify-content:center;font-size:.58rem;font-weight:${isNow?900:600};color:${isNow?'#2563eb':'#94a3b8'};border-bottom:2px solid var(--border);">${yr}${isNow?'●':''}</div>`;
+    rows.forEach((r,ri)=>{
+      const c=r.cells[yi]||{label:'',color:''};
+      const isOwner=ri===0;
+      html+=`<div style="height:36px;display:flex;align-items:center;justify-content:center;background:${c.color||'transparent'};border-bottom:1px solid #f1f5f9;" title="${c.title||c.label}">`;
+      if(c.label)html+=isOwner
+        ?`<span style="font-size:.54rem;color:#94a3b8;">${c.label}</span>`
+        :`<span style="background:${c.color||'#e2e8f0'};border-radius:4px;padding:1px 4px;font-size:.54rem;font-weight:700;white-space:nowrap;">${c.label}</span>`;
+      html+=`</div>`;
+    });
+    html+=`</div>`;
+  });
+  html+=`</div></div>`;
+  document.getElementById('timeline-container').innerHTML=html;
+  renderCustomEventsList();
+}
+
+function renderCustomEventsList(){
+  const el=document.getElementById('custom-events-list');
+  const em=document.getElementById('custom-events-empty');
+  if(!EVENTS.length){el.innerHTML='';em.style.display='block';return;}
+  em.style.display='none';
+  el.innerHTML=EVENTS.sort((a,b)=>a.year-b.year).map((ev,i)=>`
+    <div style="display:flex;align-items:center;gap:8px;padding:9px 12px;background:#f8fafc;border-radius:10px;border:1px solid var(--border);">
+      <span style="background:${EV_COLORS[ev.cat]||'#94a3b8'};color:#fff;border-radius:8px;padding:3px 9px;font-size:.65rem;font-weight:800;white-space:nowrap;">${ev.year}年</span>
+      <span style="font-size:.76rem;">${EV_ICONS[ev.cat]||''} ${ev.name}</span>
+      ${ev.amount?`<span style="font-size:.73rem;font-weight:700;color:${ev.amount<0?'#dc2626':'#16a34a'};margin-left:auto;">${ev.amount>0?'+':''}${ev.amount}万円</span>`:'<span style="flex:1;"></span>'}
+      ${ev.memo?`<span style="font-size:.62rem;color:#94a3b8;">${ev.memo}</span>`:''}
+      <button onclick="openEventModal(${i})" style="background:none;border:none;color:#94a3b8;cursor:pointer;font-size:.8rem;">✏️</button>
+      <button onclick="deleteEvent(${i})" style="background:none;border:none;color:#fca5a5;cursor:pointer;font-size:.8rem;">🗑</button>
+    </div>`).join('');
+}
+
+function openEventModal(idx){
+  document.getElementById('ev-id').value=idx===undefined?'':idx;
+  if(idx!==undefined&&EVENTS[idx]){
+    const ev=EVENTS[idx];
+    document.getElementById('ev-name').value=ev.name;
+    document.getElementById('ev-year').value=ev.year;
+    document.getElementById('ev-cat').value=ev.cat;
+    document.getElementById('ev-amount').value=ev.amount||'';
+    document.getElementById('ev-memo').value=ev.memo||'';
+  }else{
+    document.getElementById('ev-name').value='';
+    document.getElementById('ev-year').value=new Date().getFullYear()+1;
+    document.getElementById('ev-cat').value='other';
+    document.getElementById('ev-amount').value='';
+    document.getElementById('ev-memo').value='';
+  }
+  document.getElementById('event-modal').style.display='block';
+}
+function closeEventModal(){document.getElementById('event-modal').style.display='none';}
+function saveEvent(){
+  const name=document.getElementById('ev-name').value.trim();
+  const year=parseInt(document.getElementById('ev-year').value);
+  const cat =document.getElementById('ev-cat').value;
+  const amount=parseFloat(document.getElementById('ev-amount').value)||0;
+  const memo =document.getElementById('ev-memo').value.trim();
+  if(!name||!year){showToast('イベント名と発生年を入力してください');return;}
+  const idx=document.getElementById('ev-id').value;
+  idx!==''?EVENTS[parseInt(idx)]={name,year,cat,amount,memo}:EVENTS.push({name,year,cat,amount,memo});
+  saveStorage();closeEventModal();showToast('イベントを保存しました');
+  if(document.getElementById('view-timeline').style.display!=='none')renderTimeline();
+  if(document.getElementById('view-projection').style.display!=='none')renderProjection();
+}
+function deleteEvent(i){if(!confirm('このイベントを削除しますか？'))return;
+  EVENTS.splice(i,1);saveStorage();renderTimeline();showToast('削除しました');}
+
+// ─── 推移 ───
+function renderProjection(){
+  const s=getLifeSettings();
+  const children=getChildren();
+  const now=new Date().getFullYear();
+  const age=parseInt(s?.ownerAge)||35;
+  const retireYear=(now-age)+parseInt(s?.retireAge||65);
+  const end=Math.max(retireYear+20,now+40);
+  const rate=(s?.investReturn||3)/100;
+  const pl=getKakeiboMonthly();
+  const annualIncome=((s?.monthlyIncome||0)+(s?.spouseIncome||0))*12+(s?.bonusAnnual||0);
+  let fixedAnnual=0;
+  try{fixedAnnual=JSON.parse(localStorage.getItem('kakeibo_recurring_v1')||'[]').reduce((s,c)=>s+(parseFloat(c.amount)||0),0)/10000*12;}catch(e){}
+  const eduM=s?.eduMonthly||0, retM=s?.retireMonthly||0;
+  const surplus=pl?pl.avgMonthly*12/10000:Math.max(0,annualIncome-(fixedAnnual+eduM*12+retM*12));
+  const initNW=Math.round((ASSETS.reduce((s,a)=>s+(a.amount||0),0)-LIABS.reduce((s,l)=>s+(l.amount||0),0))/10000*10)/10;
+  let nw=initNW, retire=parseFloat(s?.retirePool||0);
+  const years=Array.from({length:end-now+1},(_,i)=>now+i);
+  const data=years.map(yr=>{
+    const ev=EVENTS.filter(e=>e.year===yr).reduce((s,e)=>s+(e.amount||0),0);
+    if(yr>now){
+      const retired=yr>=retireYear;
+      nw=nw*(1+rate*0.3)+(retired?0:surplus)+ev;
+      retire=retire*(1+rate)+(retired?0:retM*12);
+    }
+    return{yr,nw:Math.round(nw),retire:Math.round(retire),ev,age:age+(yr-now),isRetire:yr===retireYear};
+  });
+  const retData=data.find(d=>d.yr===retireYear);
+  document.getElementById('projection-summary').innerHTML=[
+    ['定年時 純資産','#f0fdf4','#16a34a',retData?(retData.nw).toLocaleString():'─'],
+    ['定年時 老後資金','#f0f9ff','#0891b2',retData?(retData.retire).toLocaleString():'─'],
+    ['ピーク純資産','#fef9ec','#f59e0b',Math.max(...data.map(d=>d.nw)).toLocaleString()],
+  ].map(([l,bg,col,v])=>`<div style="background:${bg};border-radius:10px;padding:12px;text-align:center;">
+    <div style="font-size:.63rem;color:#94a3b8;margin-bottom:4px;">${l}</div>
+    <div style="font-size:1.1rem;font-weight:900;color:${col};">${v}万円</div></div>`).join('');
+  // SVGチャート
+  const W=700,H=200,PT=10,PB=30,PL=60,PR=20;
+  const CW=W-PL-PR,CH=H-PT-PB;
+  const allV=[...data.map(d=>d.nw),...data.map(d=>d.retire),0];
+  const minV=Math.min(...allV),maxV=Math.max(...allV);
+  const sx=i=>PL+i/(data.length-1)*CW;
+  const sy=v=>PT+CH-(v-minV)/(maxV-minV||1)*CH;
+  const nwPath=data.map((d,i)=>`${!i?'M':'L'}${sx(i).toFixed(1)} ${sy(d.nw).toFixed(1)}`).join(' ');
+  const rtPath=data.map((d,i)=>`${!i?'M':'L'}${sx(i).toFixed(1)} ${sy(d.retire).toFixed(1)}`).join(' ');
+  const z=sy(0).toFixed(1);
+  const evM=data.filter(d=>d.ev).map((d,_)=>{const i=data.indexOf(d);
+    return`<circle cx="${sx(i).toFixed(1)}" cy="${sy(d.nw).toFixed(1)}" r="5" fill="${d.ev<0?'#ef4444':'#10b981'}" opacity=".85"/>
+      <text x="${sx(i).toFixed(1)}" y="${(sy(d.nw)-9).toFixed(1)}" text-anchor="middle" font-size="8" fill="${d.ev<0?'#ef4444':'#10b981'}">${d.ev>0?'+':''}${d.ev}万</text>`;}).join('');
+  const ri=data.findIndex(d=>d.yr===retireYear);
+  const rl=ri>=0?`<line x1="${sx(ri).toFixed(1)}" y1="${PT}" x2="${sx(ri).toFixed(1)}" y2="${H-PB}" stroke="#f59e0b" stroke-width="1.5" stroke-dasharray="4"/>
+    <text x="${(sx(ri)+3).toFixed(1)}" y="${PT+12}" font-size="8" fill="#f59e0b" font-weight="bold">定年</text>`:'';
+  const xL=data.filter((_,i)=>i%5===0).map((d,_)=>{const i=data.indexOf(d);
+    return`<text x="${sx(i).toFixed(1)}" y="${H-PB+14}" text-anchor="middle" font-size="8" fill="#94a3b8">${d.yr}</text>`;}).join('');
+  const yL=[minV,(minV+maxV)/2,maxV].map(v=>`<text x="${PL-5}" y="${(sy(v)+4).toFixed(1)}" text-anchor="end" font-size="9" fill="#94a3b8">${Math.round(v).toLocaleString()}</text>
+    <line x1="${PL}" y1="${sy(v).toFixed(1)}" x2="${W-PR}" y2="${sy(v).toFixed(1)}" stroke="#f1f5f9" stroke-width="1"/>`).join('');
+  document.getElementById('projection-chart').innerHTML=
+    `<svg viewBox="0 0 ${W} ${H}" xmlns="http://www.w3.org/2000/svg" style="width:100%;height:${H}px;">
+      ${yL}${xL}<line x1="${PL}" y1="${z}" x2="${W-PR}" y2="${z}" stroke="#e2e8f0" stroke-width="1"/>
+      <path d="${nwPath}" fill="none" stroke="#3b82f6" stroke-width="2.5"/>
+      <path d="${rtPath}" fill="none" stroke="#10b981" stroke-width="2" stroke-dasharray="5,3"/>
+      ${rl}${evM}</svg>`;
+  document.getElementById('chart-legend').innerHTML=`
+    <span><span style="display:inline-block;width:22px;height:3px;background:#3b82f6;margin-right:4px;vertical-align:middle;"></span>純資産</span>
+    <span><span style="display:inline-block;width:22px;border-top:2px dashed #10b981;margin-right:4px;vertical-align:middle;"></span>老後資金</span>
+    <span><span style="display:inline-block;width:22px;border-top:2px dashed #f59e0b;margin-right:4px;vertical-align:middle;"></span>定年</span>
+    <span>● 費用イベント（赤）/ 収入イベント（緑）</span>`;
+  // テーブル
+  const TH='padding:7px 8px;text-align:left;font-size:.63rem;color:var(--muted);border-bottom:2px solid var(--border);white-space:nowrap;';
+  document.getElementById('projection-table').innerHTML=
+    `<thead><tr style="background:#f8fafc;"><th style="${TH}">年</th><th style="${TH}">年齢</th>
+    <th style="${TH}">純資産</th><th style="${TH}">老後資金</th>
+    <th style="${TH}">イベント費用</th><th style="${TH}">イベント</th></tr></thead><tbody>`+
+    data.map(d=>{
+      const evs=EVENTS.filter(e=>e.year===d.yr);
+      const bg=d.isRetire?'#fef9c3':d.yr===now?'#eff6ff':'';
+      return`<tr style="background:${bg};border-bottom:1px solid #f1f5f9;">
+        <td style="padding:6px 8px;font-size:.7rem;font-weight:${d.isRetire||d.yr===now?800:400};">${d.yr}</td>
+        <td style="padding:6px 8px;font-size:.7rem;">${d.age}歳</td>
+        <td style="padding:6px 8px;font-size:.72rem;font-weight:700;color:${d.nw>=0?'#0891b2':'#dc2626'};">${d.nw.toLocaleString()}万</td>
+        <td style="padding:6px 8px;font-size:.72rem;color:#10b981;">${d.retire.toLocaleString()}万</td>
+        <td style="padding:6px 8px;font-size:.68rem;color:${d.ev<0?'#dc2626':'#16a34a'};font-weight:${d.ev?700:400};">${d.ev?(d.ev>0?'+':'')+d.ev+'万':'─'}</td>
+        <td style="padding:6px 8px;font-size:.65rem;color:#64748b;">${evs.map(e=>EV_ICONS[e.cat]+e.name).join(' ')||'─'}</td>
+      </tr>`;
+    }).join('')+`</tbody>`;
+}
+
+// ─── タブ ───
+function showTab(t){
+  ['bs','timeline','projection'].forEach(id=>{
+    document.getElementById('view-'+id).style.display=id===t?'':'none';
+    document.getElementById('tab-'+id).classList.toggle('active',id===t);
+  });
+  if(t==='timeline')renderTimeline();
+  if(t==='projection')renderProjection();
+}
+
+function showToast(msg){
+  const el=document.getElementById('toast');el.textContent=msg;el.style.display='block';el.style.opacity='1';
+  setTimeout(()=>{el.style.transition='opacity .5s';el.style.opacity='0';
+    setTimeout(()=>{el.style.display='none';el.style.transition='';},500);},2500);
+}
+
+// ─── 初期化 ───
+loadStorage();
+loadExtraStorage();
+renderBS();
+</script>
+</body>
+</html>
