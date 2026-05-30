@@ -23,7 +23,6 @@ export default function PlannerApp() {
   const [ready, setReady] = useState(false);
 
   useEffect(() => {
-    // 初回訪問時はオンボーディング（/index.html）へリダイレクト
     const onboarded = localStorage.getItem('lifePlanSim_onboarded_v1');
     const welcomed  = localStorage.getItem('lifePlanSim_welcomed_v1');
     if (!onboarded && !welcomed) {
@@ -54,7 +53,6 @@ export default function PlannerApp() {
     setInputs(DEFAULT_INPUT);
   }, []);
 
-  // チェック完了前は何も表示しない（一瞬の表示を防ぐ）
   if (!ready) {
     return (
       <div style={{
