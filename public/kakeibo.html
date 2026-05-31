@@ -203,6 +203,20 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
       <div class="cat-list" id="cat-list"></div>
     </div>
 
+    <!-- カレンダー -->
+    <div id="cal-section" style="display:none;">
+      <div class="section-title" style="display:flex;align-items:center;justify-content:space-between;">
+        <span>📅 日別カレンダー</span>
+      </div>
+      <div style="background:#fff;border-radius:12px;padding:10px;box-shadow:var(--shadow);">
+        <div id="cal-grid" style="display:grid;grid-template-columns:repeat(7,1fr);gap:2px;"></div>
+        <div style="display:flex;gap:10px;margin-top:6px;justify-content:flex-end;font-size:.6rem;color:var(--muted);">
+          <span><span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:#3b82f6;margin-right:3px;"></span>収入</span>
+          <span><span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:#f97316;margin-right:3px;"></span>支出</span>
+        </div>
+      </div>
+    </div>
+
     <!-- 明細 -->
     <div class="detail-card" id="detail-card" style="display:none;">
       <div class="detail-header" onclick="toggleDetail()">
@@ -833,6 +847,12 @@ function saveManualEntry(){
   if(_manualType==='income'){
     const cat=document.getElementById('m-income-cat').value;
     ALL_TXN.push({id:genId(),date,name,amount,category:cat,cardId:'income',source:'income',type:'income',monthKey,memo});
+    // 手動入力収入の合計をINCOME_OVERRIDEに反映
+    const totalManualInc=ALL_TXN.filter(t=>t.monthKey===monthKey&&t.type==='income').reduce((s,t)=>s+t.amount,0)+amount;
+    // 既存レコードはpush後なのでそのまま合計
+    const newTotal=ALL_TXN.filter(t=>t.monthKey===monthKey&&t.type==='income').reduce((s,t)=>s+t.amount,0);
+    INCOME_OVERRIDE[monthKey]=newTotal;
+    localStorage.setItem(INCOME_OVERRIDE_KEY,JSON.stringify(INCOME_OVERRIDE));
     showToast('収入を記録しました');
   } else {
     const cat=document.getElementById('m-category').value;
@@ -1397,6 +1417,58 @@ function renderBarChart(months){
 // ============================================================
 // カテゴリ・明細
 // ============================================================
+function renderCalendar(){
+  const el=document.getElementById('cal-grid');
+  if(!el)return;
+  const[y,m]=CURRENT_MONTH.split('-').map(Number);
+  const daysInMonth=new Date(y,m,0).getDate();
+  const firstDay=(new Date(y,m-1,1).getDay()+6)%7; // 月曜始まり
+  const DOW=['月','火','水','木','金','土','日'];
+  // 日ごとの集計
+  const dayMap={};
+  ALL_TXN.filter(t=>t.monthKey===CURRENT_MONTH).forEach(t=>{
+    const d=parseInt(t.date.split('-')[2]);
+    if(!dayMap[d])dayMap[d]={inc:0,exp:0};
+    if(t.type==='income')dayMap[d].inc+=t.amount;
+    else dayMap[d].exp+=t.amount;
+  });
+  const today=new Date();
+  const isCurrentMonth=today.getFullYear()===y&&today.getMonth()+1===m;
+  const todayD=isCurrentMonth?today.getDate():0;
+  // ヘッダー
+  let html=DOW.map(d=>`<div style="text-align:center;font-size:.58rem;font-weight:700;color:var(--muted);padding:4px 0;">${d}</div>`).join('');
+  // 空白
+  for(let i=0;i<firstDay;i++) html+=`<div></div>`;
+  // 日付セル
+  for(let d=1;d<=daysInMonth;d++){
+    const data=dayMap[d]||{};
+    const isToday=d===todayD;
+    const dow=(firstDay+d-1)%7; // 0=月,5=土,6=日
+    const isSun=dow===6,isSat=dow===5;
+    const numColor=isToday?'#fff':isSun?'#dc2626':isSat?'#2563eb':'var(--navy)';
+    html+=`<div onclick="calDayClick(${d})" style="border-radius:8px;padding:3px 2px;min-height:48px;cursor:pointer;transition:.1s;background:${isToday?'var(--navy)':'transparent'};" onmouseover="this.style.background='${isToday?'var(--navy)':'#f1f5f9'}'" onmouseout="this.style.background='${isToday?'var(--navy)':'transparent'}'">
+      <div style="text-align:center;font-size:.65rem;font-weight:${isToday?'800':'600'};color:${numColor};margin-bottom:2px;">${d}</div>
+      ${data.inc?`<div style="font-size:.52rem;color:#3b82f6;text-align:center;font-weight:700;">+${(data.inc/10000).toFixed(1)}万</div>`:''}
+      ${data.exp?`<div style="font-size:.52rem;color:#f97316;text-align:center;font-weight:700;">-${(data.exp/10000).toFixed(1)}万</div>`:''}
+    </div>`;
+  }
+  el.innerHTML=html;
+}
+function calDayClick(d){
+  const dateStr=CURRENT_MONTH+'-'+(d<10?'0':'')+d;
+  FILTER_CAT='all';
+  const txns=ALL_TXN.filter(t=>t.date===dateStr).sort((a,b)=>b.type.localeCompare(a.type));
+  if(!txns.length){showToast(d+'日の取引はありません');return;}
+  DETAIL_OPEN=true;
+  document.getElementById('detail-toggle-icon').textContent='▲ 閉じる';
+  document.getElementById('detail-card').style.display='';
+  const exp=ALL_TXN.filter(t=>t.monthKey===CURRENT_MONTH&&t.type==='expense');
+  renderDetail([...ALL_TXN.filter(t=>t.monthKey===CURRENT_MONTH&&t.type==='income'),...exp].sort((a,b)=>b.date.localeCompare(a.date)));
+  // 選択日の位置へスクロール
+  document.getElementById('detail-card').scrollIntoView({behavior:'smooth',block:'start'});
+  showToast(`${d}日: ${txns.length}件`);
+}
+
 function renderCategories(exp,total){
   const map={};
   for(const t of exp)map[t.category]=(map[t.category]||0)+t.amount;
@@ -1483,6 +1555,7 @@ function changeCat(idx,cat){
   saveStorage();
   const exp=getFilteredExp();
   renderCategories(exp,exp.reduce((s,t)=>s+t.amount,0));
+  renderCalendar();
   renderDetail([...getFilteredInc(),...exp].sort((a,b)=>b.date.localeCompare(a.date)));
 }
 function deleteTxn(id){if(!confirm('この明細を削除しますか？'))return;ALL_TXN=ALL_TXN.filter(t=>t.id!==id);saveStorage();render();}
