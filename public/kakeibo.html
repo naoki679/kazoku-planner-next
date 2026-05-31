@@ -427,8 +427,8 @@ const CATEGORY_RULES=[
   {cat:'日用品',icon:'🧴',keywords:['ダイソー','ﾀﾞｲｿ','100均','ニトリ','ﾆﾄﾘ','カインズ','ドン・キホーテ','東急ハンズ']},
   {cat:'ショッピング',icon:'👗',keywords:['チヨダ','阪急','ﾕﾆｸﾛ','ユニクロ','ZARA','GU','メルカリ','楽天ＳＰ']},
 ];
-const CAT_ICONS={'食費':'🛒','外食':'🍜','保険':'🛡','通信費':'📱','交通費':'🚃','投資':'📈','サブスク':'🎬','医療費':'💊','日用品':'🧴','子ども費':'👶','ショッピング':'👗','その他':'💰','給与':'💼','ボーナス':'🎁','副収入':'💡','その他収入':'📦','家賃':'🏠','住宅ローン':'🏠','光熱費':'💡','固定費':'🔁'};
-const CAT_COLORS={'食費':'#16a34a','外食':'#f97316','保険':'#2563eb','通信費':'#7c3aed','交通費':'#0891b2','投資':'#d97706','サブスク':'#db2777','医療費':'#dc2626','日用品':'#65a30d','子ども費':'#0284c7','ショッピング':'#9333ea','その他':'#64748b','給与':'#16a34a','ボーナス':'#059669','副収入':'#0d9488','その他収入':'#64748b','家賃':'#f97316','住宅ローン':'#ea580c','光熱費':'#f59e0b','固定費':'#f97316'};
+const CAT_ICONS={'食費':'🛒','外食':'🍜','保険':'🛡','通信費':'📱','交通費':'🚃','移動交通費':'🚗','投資':'📈','サブスク':'🎬','医療費':'💊','日用品':'🧴','子ども費':'👶','ショッピング':'👗','その他':'💰','給与':'💼','ボーナス':'🎁','副収入':'💡','その他収入':'📦','家賃':'🏠','住宅ローン':'🏠','光熱費':'💡','固定費':'🔁'};
+const CAT_COLORS={'食費':'#16a34a','外食':'#f97316','保険':'#2563eb','通信費':'#7c3aed','交通費':'#0891b2','移動交通費':'#0369a1','投資':'#d97706','サブスク':'#db2777','医療費':'#dc2626','日用品':'#65a30d','子ども費':'#0284c7','ショッピング':'#9333ea','その他':'#64748b','給与':'#16a34a','ボーナス':'#059669','副収入':'#0d9488','その他収入':'#64748b','家賃':'#f97316','住宅ローン':'#ea580c','光熱費':'#f59e0b','固定費':'#f97316'};
 const CARD_PALETTE=['#1a2b4a','#2563eb','#7c3aed','#db2777','#dc2626','#f97316','#16a34a','#0891b2'];
 
 // ============================================================
@@ -440,8 +440,12 @@ const CARDS_KEY   ='kakeibo_cards_v1';
 const RECURRING_KEY='kakeibo_recurring_v1';
 const CAT_MEMORY_KEY='kakeibo_cat_memory_v1';
 const ANNUAL_KEY='kakeibo_annual_v1';
+const INCOME_OVERRIDE_KEY='kakeibo_income_override_v1';
+const CUSTOM_CAT_KEY='kakeibo_custom_cats_v1';
 
 let CARDS=[], ALL_TXN=[], BUDGETS={}, RECURRING=[], CAT_MEMORY={}, ANNUAL_EVENTS=[];
+let INCOME_OVERRIDE={};
+let CUSTOM_CATS=[]; // [{name:'旅行',icon:'✈️',color:'#0891b2'}, ...] // { "2026-05": 520000, ... } 月別収入上書き
 let CURRENT_MONTH='', CURRENT_YEAR=new Date().getFullYear();
 let DETAIL_OPEN=false, FILTER_CARD='all', FILTER_CAT='all', CURRENT_VIEW='monthly';
 let _manualType='expense';
@@ -453,6 +457,10 @@ function loadStorage(){
   try{RECURRING=JSON.parse(localStorage.getItem(RECURRING_KEY)||'[]');}catch(e){RECURRING=[];}
   try{CAT_MEMORY=JSON.parse(localStorage.getItem(CAT_MEMORY_KEY)||'{}');}catch(e){CAT_MEMORY={};}
   try{ANNUAL_EVENTS=JSON.parse(localStorage.getItem(ANNUAL_KEY)||'[]');}catch(e){ANNUAL_EVENTS=[];}
+  try{INCOME_OVERRIDE=JSON.parse(localStorage.getItem(INCOME_OVERRIDE_KEY)||'{}');}catch(e){INCOME_OVERRIDE={};}
+  try{CUSTOM_CATS=JSON.parse(localStorage.getItem(CUSTOM_CAT_KEY)||'[]');}catch(e){CUSTOM_CATS=[];}
+  // カスタムカテゴリをCAT_ICONS/CAT_COLORSに動的追加
+  CUSTOM_CATS.forEach(c=>{CAT_ICONS[c.name]=c.icon;CAT_COLORS[c.name]=c.color;});
   ALL_TXN.forEach(t=>{if(!t.cardId)t.cardId='unknown';if(!t.type)t.type='expense';if(!t.id)t.id=genId();});
 }
 function saveStorage(){
@@ -462,6 +470,8 @@ function saveStorage(){
   localStorage.setItem(RECURRING_KEY,JSON.stringify(RECURRING));
   localStorage.setItem(CAT_MEMORY_KEY,JSON.stringify(CAT_MEMORY));
   localStorage.setItem(ANNUAL_KEY,JSON.stringify(ANNUAL_EVENTS));
+  localStorage.setItem(INCOME_OVERRIDE_KEY,JSON.stringify(INCOME_OVERRIDE));
+  localStorage.setItem(CUSTOM_CAT_KEY,JSON.stringify(CUSTOM_CATS));
 }
 function genId(){return Date.now().toString(36)+Math.random().toString(36).slice(2,6);}
 
@@ -1135,20 +1145,32 @@ function render(){
   const inc=getFilteredInc();
   const totalExp=exp.reduce((s,t)=>s+t.amount,0);
   const totalInc=inc.reduce((s,t)=>s+t.amount,0);
-  // 収入未記録の場合はindex.htmlの設定値（サイドバー）を自動反映
-  // サイドバー設定値を常に優先（収入の手動記録より設定値を使用）
+  // 優先順位: 月別手動上書き > index.html設定値 > 記録済み収入
   let settingsInc=0, settingsIncLabel='';
   const _idxInc=getIndexMonthlyIncome();
   if(_idxInc&&_idxInc.total>0){
     settingsInc=Math.round(_idxInc.total*10000);
     settingsIncLabel=`本人${_idxInc.self}万${_idxInc.spouse>0?' + 配偶者'+_idxInc.spouse+'万':''}${_idxInc.bonus>0?' + ボーナス'+_idxInc.bonus+'万':''}`;
   }
-  const effectiveInc=settingsInc>0?settingsInc:totalInc;
-  const usingSettings=settingsInc>0;
+  const overrideInc=INCOME_OVERRIDE[CURRENT_MONTH];
+  let effectiveInc, incSrcLabel, usingSettings;
+  if(overrideInc!=null){
+    effectiveInc=overrideInc;
+    incSrcLabel='✏️ 手動設定';
+    usingSettings=false;
+  } else if(settingsInc>0){
+    effectiveInc=settingsInc;
+    incSrcLabel=settingsIncLabel;
+    usingSettings=true;
+  } else {
+    effectiveInc=totalInc;
+    incSrcLabel='';
+    usingSettings=false;
+  }
   document.getElementById('month-total-sub').textContent=`支出 ${(totalExp/10000).toFixed(1)}万 / 収入 ${(effectiveInc/10000).toFixed(1)}万${usingSettings?' ※設定値':''}`;
 
   renderFilterBar();
-  renderSummary(effectiveInc,totalExp,months,usingSettings?settingsIncLabel:'');
+  renderSummary(effectiveInc,totalExp,months,incSrcLabel,overrideInc!=null);
   renderSavingsBanner(effectiveInc,totalExp,'savings-banner');
   renderPie(exp);
   renderBarChart(months);
@@ -1168,16 +1190,66 @@ function renderFilterBar(){
 }
 function setFilter(id){FILTER_CARD=id;FILTER_CAT='all';render();}
 
-function renderSummary(inc,exp,months,settingsLabel=''){
+function openIncomeEdit(){
+  const cur=INCOME_OVERRIDE[CURRENT_MONTH];
+  const [y,m]=CURRENT_MONTH.split('-');
+  const val=cur!=null?(cur/10000).toFixed(1):'';
+  const html=`<div id="income-edit-modal" style="position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:9999;display:flex;align-items:center;justify-content:center;" onclick="if(event.target===this)closeIncomeEdit()">
+    <div style="background:#fff;border-radius:16px;padding:20px;width:min(90vw,340px);box-shadow:0 8px 32px rgba(0,0,0,.18);">
+      <div style="font-weight:800;font-size:1rem;margin-bottom:4px;">✏️ ${parseInt(m)}月の収入を手動設定</div>
+      <div style="font-size:.72rem;color:#64748b;margin-bottom:14px;">設定値より優先されます。空欄にすると設定値に戻ります。</div>
+      <div style="display:flex;align-items:center;gap:8px;margin-bottom:16px;">
+        <input id="income-edit-input" type="number" min="0" max="9999" step="0.1" value="${val}" placeholder="例: 52.3"
+          style="flex:1;padding:10px 12px;border:2px solid #2563eb;border-radius:10px;font-size:1.1rem;font-weight:700;text-align:right;">
+        <span style="font-size:.9rem;font-weight:700;color:#475569;">万円/月</span>
+      </div>
+      ${cur!=null?`<button onclick="clearIncomeOverride()" style="width:100%;padding:8px;margin-bottom:8px;background:#fef2f2;border:1.5px solid #fecaca;border-radius:10px;color:#dc2626;font-size:.8rem;font-weight:700;cursor:pointer;">🔄 設定値に戻す</button>`:''}
+      <div style="display:flex;gap:8px;">
+        <button onclick="closeIncomeEdit()" style="flex:1;padding:10px;background:#f1f5f9;border:none;border-radius:10px;cursor:pointer;font-weight:700;">キャンセル</button>
+        <button onclick="saveIncomeOverride()" style="flex:1;padding:10px;background:#2563eb;color:#fff;border:none;border-radius:10px;cursor:pointer;font-weight:700;">保存</button>
+      </div>
+    </div>
+  </div>`;
+  document.body.insertAdjacentHTML('beforeend',html);
+  document.getElementById('income-edit-input').focus();
+}
+function closeIncomeEdit(){
+  document.getElementById('income-edit-modal')?.remove();
+}
+function saveIncomeOverride(){
+  const v=parseFloat(document.getElementById('income-edit-input').value);
+  if(!isNaN(v)&&v>=0){
+    INCOME_OVERRIDE[CURRENT_MONTH]=Math.round(v*10000);
+  } else {
+    delete INCOME_OVERRIDE[CURRENT_MONTH];
+  }
+  localStorage.setItem(INCOME_OVERRIDE_KEY,JSON.stringify(INCOME_OVERRIDE));
+  closeIncomeEdit();
+  render();
+  showToast('✅ 収入を更新しました');
+}
+function clearIncomeOverride(){
+  delete INCOME_OVERRIDE[CURRENT_MONTH];
+  localStorage.setItem(INCOME_OVERRIDE_KEY,JSON.stringify(INCOME_OVERRIDE));
+  closeIncomeEdit();
+  render();
+  showToast('🔄 設定値に戻しました');
+}
+
+function renderSummary(inc,exp,months,incSrcLabel='',isOverride=false){
   const savings=inc-exp;
   const savingsRate=inc>0?Math.round(savings/inc*100):null;
   const prev=months[months.indexOf(CURRENT_MONTH)+1];
   const prevExp=prev?ALL_TXN.filter(t=>t.monthKey===prev&&t.type==='expense').reduce((s,t)=>s+t.amount,0):null;
   const diff=prevExp!==null?exp-prevExp:null;
+  const subLabel=incSrcLabel?`${isOverride?'✏️ 手動設定':'📌'}${isOverride?'':incSrcLabel}`:'今月の総収入';
   document.getElementById('summary-grid').innerHTML=`
-    <div class="sum-card animate-in"><div class="sum-label">収入合計</div>
+    <div class="sum-card animate-in" style="position:relative;">
+      <div class="sum-label">収入合計</div>
       <div class="sum-val" style="color:#16a34a;">${(inc/10000).toFixed(1)}<span style="font-size:.7rem;">万</span></div>
-      <div class="sum-sub">${settingsLabel?'📌'+settingsLabel:'今月の総収入'}</div></div>
+      <div class="sum-sub">${subLabel}</div>
+      <button onclick="openIncomeEdit()" style="position:absolute;top:8px;right:8px;background:${isOverride?'#dbeafe':'#f1f5f9'};border:none;border-radius:6px;padding:3px 7px;font-size:.68rem;cursor:pointer;color:${isOverride?'#1d4ed8':'#475569'};font-weight:700;">✏️ 調整</button>
+    </div>
     <div class="sum-card animate-in"><div class="sum-label">支出合計</div>
       <div class="sum-val" style="color:#dc2626;">${(exp/10000).toFixed(1)}<span style="font-size:.7rem;">万</span></div>
       <div class="sum-sub">${diff!==null?`前月比 ${diff>0?'▲':'▼'}${Math.abs(diff/10000).toFixed(1)}万`:'前月データなし'}</div></div>
