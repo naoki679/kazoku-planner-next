@@ -946,8 +946,12 @@ function showImportPreview(cardId){
     forceBtn.style.cssText='width:100%;margin-top:6px;padding:9px;background:#fef3c7;border:1.5px solid #fde68a;border-radius:10px;font-size:.76rem;cursor:pointer;font-weight:700;color:#92400e;display:none;';
     confirmBtn.parentElement.after(forceBtn);
   }
-  if(added.length===0&&dups.length>0){
-    forceBtn.textContent=`⚡ 強制取り込み（重複を無視して${dups.length}件全て追加）`;
+  if(dups.length>0){
+    if(added.length===0){
+      forceBtn.textContent=`⚡ 強制取り込み（重複を無視して${dups.length}件全て追加）`;
+    } else {
+      forceBtn.textContent=`⚡ 重複分も追加する（ETC往復など）— ${dups.length}件`;
+    }
     forceBtn.style.display='block';
     forceBtn.onclick=forceImport;
   } else {
@@ -975,14 +979,18 @@ function cancelImport(){
   _pendingImport={txns:[],added:[],dups:[],cardId:null};
 }
 function forceImport(){
-  // 重複チェックを無視してすべて取り込む（IDは新しく発行）
-  const {txns,cardId}=_pendingImport;
-  const forced=txns.map(t=>({...t,id:genId()}));
-  ALL_TXN=[...ALL_TXN,...forced].sort((a,b)=>b.date.localeCompare(a.date));
+  // 新規分 + 重複分（IDを新発行）をまとめて取り込む
+  const {added,dups}=_pendingImport;
+  const toAdd=[...added,...dups].map(t=>({...t,id:genId()}));
+  ALL_TXN=[...ALL_TXN,...toAdd].sort((a,b)=>b.date.localeCompare(a.date));
   saveStorage();
   document.getElementById('import-preview-modal').style.display='none';
-  showToast(`⚡ ${forced.length}件を強制取り込みしました`);
+  const msg=added.length>0
+    ?`⚡ ${added.length}件追加 ＋ 重複${dups.length}件も追加しました`
+    :`⚡ ${dups.length}件を強制取り込みしました`;
+  showToast(msg);
   afterLoad();
+  _pendingImport={txns:[],added:[],dups:[],cardId:null};
 }
 // ============================================================
 // 月リセット
