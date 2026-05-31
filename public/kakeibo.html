@@ -847,12 +847,6 @@ function saveManualEntry(){
   if(_manualType==='income'){
     const cat=document.getElementById('m-income-cat').value;
     ALL_TXN.push({id:genId(),date,name,amount,category:cat,cardId:'income',source:'income',type:'income',monthKey,memo});
-    // 手動入力収入の合計をINCOME_OVERRIDEに反映
-    const totalManualInc=ALL_TXN.filter(t=>t.monthKey===monthKey&&t.type==='income').reduce((s,t)=>s+t.amount,0)+amount;
-    // 既存レコードはpush後なのでそのまま合計
-    const newTotal=ALL_TXN.filter(t=>t.monthKey===monthKey&&t.type==='income').reduce((s,t)=>s+t.amount,0);
-    INCOME_OVERRIDE[monthKey]=newTotal;
-    localStorage.setItem(INCOME_OVERRIDE_KEY,JSON.stringify(INCOME_OVERRIDE));
     showToast('収入を記録しました');
   } else {
     const cat=document.getElementById('m-category').value;
@@ -1196,8 +1190,9 @@ function render(){
     incSrcLabel='✏️ 手動設定';
     usingSettings=false;
   } else if(settingsInc>0){
-    effectiveInc=settingsInc;
-    incSrcLabel=settingsIncLabel;
+    // 設定値 + 手動追加収入（給与等の固定収入は設定値で管理、その他収入は加算）
+    effectiveInc=settingsInc+totalInc;
+    incSrcLabel=settingsIncLabel+(totalInc>0?` + 手入力${(totalInc/10000).toFixed(1)}万`:'');
     usingSettings=true;
   } else {
     effectiveInc=totalInc;
@@ -1456,19 +1451,26 @@ function renderCalendar(){
   }
   el.innerHTML=html;
 }
+let FILTER_DATE=null;
 function calDayClick(d){
   const dateStr=CURRENT_MONTH+'-'+(d<10?'0':'')+d;
   FILTER_CAT='all';
   const txns=ALL_TXN.filter(t=>t.date===dateStr).sort((a,b)=>b.type.localeCompare(a.type));
   if(!txns.length){showToast(d+'日の取引はありません');return;}
+  FILTER_DATE=dateStr;
   DETAIL_OPEN=true;
   document.getElementById('detail-toggle-icon').textContent='▲ 閉じる';
   document.getElementById('detail-card').style.display='';
-  const exp=ALL_TXN.filter(t=>t.monthKey===CURRENT_MONTH&&t.type==='expense');
-  renderDetail([...ALL_TXN.filter(t=>t.monthKey===CURRENT_MONTH&&t.type==='income'),...exp].sort((a,b)=>b.date.localeCompare(a.date)));
+  renderDetail(txns);
   // 選択日の位置へスクロール
   document.getElementById('detail-card').scrollIntoView({behavior:'smooth',block:'start'});
   showToast(`${d}日: ${txns.length}件`);
+}
+function clearDayFilter(){
+  FILTER_DATE=null;
+  const inc=getFilteredInc();
+  const exp=getFilteredExp();
+  renderDetail([...inc,...exp].sort((a,b)=>b.date.localeCompare(a.date)));
 }
 
 function renderCategories(exp,total){
@@ -1510,6 +1512,11 @@ function setCatFilter(cat){FILTER_CAT=cat;
 function renderDetail(txns){
   const el=document.getElementById('detail-list');
   if(!DETAIL_OPEN){el.style.display='none';return;}
+  // 日付フィルターバナー
+  const dayBanner=FILTER_DATE?`<div style="display:flex;align-items:center;gap:8px;padding:6px 10px;background:#eff6ff;border-radius:8px;margin-bottom:6px;font-size:.72rem;">
+    <span style="color:#2563eb;font-weight:700;">📅 ${FILTER_DATE.split('-')[2]}日の明細</span>
+    <button onclick="clearDayFilter()" style="margin-left:auto;font-size:.65rem;padding:2px 10px;border-radius:20px;border:1.5px solid #2563eb;background:#fff;color:#2563eb;cursor:pointer;font-weight:700;">✕ 全表示に戻る</button>
+  </div>`:''
   // カテゴリーフィルターチップ
   const expCats=[...new Set(txns.filter(t=>t.type==='expense').map(t=>t.category))].sort();
   const filterHtml=expCats.length>1?
@@ -1521,7 +1528,7 @@ function renderDetail(txns){
   // フィルター適用
   const filtered=FILTER_CAT==='all'?txns:txns.filter(t=>t.type==='income'||t.category===FILTER_CAT);
   const cats=[...new Set([...Object.keys(CAT_COLORS),...ALL_TXN.map(t=>t.category)])].filter(c=>!['給与','ボーナス','副収入','その他収入','未分類'].includes(c)).sort();
-  el.innerHTML=filterHtml+filtered.map(t=>{
+  el.innerHTML=dayBanner+filterHtml+filtered.map(t=>{
     const color=t.type==='income'?'#16a34a':(CAT_COLORS[t.category]||'#64748b');
     const card=getCard(t.cardId);
     const badge=t.type==='income'?{bg:'#16a34a',label:'収入'}:
