@@ -114,6 +114,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
   </div>
   <button class="hd-btn" onclick="openCardModal()">🃏 カード</button>
   <button class="hd-btn" onclick="openRecurringModal()">🔁 固定費</button>
+  <button class="hd-btn" onclick="openSnapshotLog()">📷 過去ログ</button>
 </div>
 
 <div class="main">
@@ -1674,11 +1675,151 @@ function showToast(msg){
 }
 
 // ============================================================
+// スナップショット（月次過去ログ）
+// ============================================================
+const SNAPSHOT_KEY='kazoku_snapshots_v1';
+
+function getSnapshots(){
+  try{return JSON.parse(localStorage.getItem(SNAPSHOT_KEY)||'{}');}catch(e){return {};}
+}
+
+function buildSnapshotData(monthKey){
+  const txns=ALL_TXN.filter(t=>t.monthKey===monthKey);
+  const inc=txns.filter(t=>t.type==='income').reduce((s,t)=>s+t.amount,0);
+  const exp=txns.filter(t=>t.type==='expense').reduce((s,t)=>s+t.amount,0);
+  const idxInc=getIndexMonthlyIncome();
+  const settingsInc=idxInc&&idxInc.total>0?Math.round(idxInc.total*10000):0;
+  const effectiveInc=INCOME_OVERRIDE[monthKey]!=null?INCOME_OVERRIDE[monthKey]:(settingsInc>0?settingsInc+inc:inc);
+  return{
+    monthKey,
+    savedAt:new Date().toISOString(),
+    summary:{inc:effectiveInc,exp,savings:effectiveInc-exp},
+    kakeibo:{
+      txns,
+      cards:CARDS,
+      budgets:BUDGETS,
+      recurring:RECURRING
+    },
+    lifeplan:{
+      bs:JSON.parse(localStorage.getItem('lifeplan_bs_v2')||'{}'),
+      events:JSON.parse(localStorage.getItem('lifeplan_events_v1')||'[]'),
+      family:JSON.parse(localStorage.getItem('lifeplan_family_v1')||'null'),
+      owners:JSON.parse(localStorage.getItem('lifeplan_owners_v1')||'null')
+    }
+  };
+}
+
+function saveSnapshotForMonth(monthKey, silent){
+  const snaps=getSnapshots();
+  snaps[monthKey]=buildSnapshotData(monthKey);
+  localStorage.setItem(SNAPSHOT_KEY,JSON.stringify(snaps));
+  if(!silent) showToast(monthKey+' のスナップショットを保存しました');
+}
+
+function saveSnapshotNow(){
+  saveSnapshotForMonth(CURRENT_MONTH||new Date().toISOString().slice(0,7));
+  renderSnapshotList();
+}
+
+function autoSnapshot(){
+  // 前月分が未保存なら自動保存
+  const now=new Date();
+  const prev=new Date(now.getFullYear(),now.getMonth()-1,1);
+  const prevMk=prev.toISOString().slice(0,7);
+  const snaps=getSnapshots();
+  if(!snaps[prevMk]&&ALL_TXN.some(t=>t.monthKey===prevMk)){
+    saveSnapshotForMonth(prevMk, true);
+    showToast(prevMk+' の月次スナップショットを自動保存しました');
+  }
+}
+
+function openSnapshotLog(){
+  renderSnapshotList();
+  document.getElementById('snapshot-modal').style.display='block';
+}
+function closeSnapshotLog(){
+  document.getElementById('snapshot-modal').style.display='none';
+}
+
+function renderSnapshotList(){
+  const el=document.getElementById('snapshot-list');
+  const snaps=getSnapshots();
+  const keys=Object.keys(snaps).sort().reverse();
+  if(!keys.length){
+    el.innerHTML='<div style="text-align:center;color:#94a3b8;font-size:.76rem;padding:16px;">保存されたスナップショットはありません</div>';
+    return;
+  }
+  el.innerHTML=keys.map(mk=>{
+    const s=snaps[mk];
+    const inc=s.summary?.inc||0;
+    const exp=s.summary?.exp||0;
+    const sav=s.summary?.savings||0;
+    const savedDate=s.savedAt?new Date(s.savedAt).toLocaleDateString('ja-JP'):'';
+    const [y,m]=mk.split('-');
+    const txnCount=s.kakeibo?.txns?.length||0;
+    return`<div style="background:#f8fafc;border:1.5px solid #e2e8f0;border-radius:10px;padding:10px 12px;">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px;">
+        <span style="font-size:.78rem;font-weight:800;color:var(--navy);">${parseInt(y)}年${parseInt(m)}月</span>
+        <span style="font-size:.58rem;color:#94a3b8;">${savedDate} 保存</span>
+      </div>
+      <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:4px;margin-bottom:6px;">
+        <div style="text-align:center;background:#eff6ff;border-radius:7px;padding:5px 2px;">
+          <div style="font-size:.55rem;color:#3b82f6;font-weight:700;">収入</div>
+          <div style="font-size:.72rem;font-weight:800;color:#2563eb;">${(inc/10000).toFixed(1)}万</div>
+        </div>
+        <div style="text-align:center;background:#fff7ed;border-radius:7px;padding:5px 2px;">
+          <div style="font-size:.55rem;color:#f97316;font-weight:700;">支出</div>
+          <div style="font-size:.72rem;font-weight:800;color:#ea580c;">${(exp/10000).toFixed(1)}万</div>
+        </div>
+        <div style="text-align:center;background:${sav>=0?'#f0fdf4':'#fff1f2'};border-radius:7px;padding:5px 2px;">
+          <div style="font-size:.55rem;color:${sav>=0?'#16a34a':'#dc2626'};font-weight:700;">貯蓄</div>
+          <div style="font-size:.72rem;font-weight:800;color:${sav>=0?'#15803d':'#dc2626'};">${sav>=0?'+':''}${(sav/10000).toFixed(1)}万</div>
+        </div>
+      </div>
+      <div style="display:flex;align-items:center;justify-content:space-between;">
+        <span style="font-size:.62rem;color:#64748b;">明細 ${txnCount}件</span>
+        <div style="display:flex;gap:6px;">
+          <button onclick="overwriteSnapshot('${mk}')" style="font-size:.62rem;padding:3px 10px;border-radius:8px;border:1.5px solid #e2e8f0;background:#fff;color:#475569;cursor:pointer;font-weight:700;">🔄 上書き</button>
+          <button onclick="deleteSnapshot('${mk}')" style="font-size:.62rem;padding:3px 10px;border-radius:8px;border:1.5px solid #fecaca;background:#fff;color:#dc2626;cursor:pointer;font-weight:700;">🗑</button>
+        </div>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function overwriteSnapshot(mk){
+  if(!confirm(mk+' のスナップショットを現在のデータで上書きしますか？'))return;
+  saveSnapshotForMonth(mk);
+  renderSnapshotList();
+}
+function deleteSnapshot(mk){
+  if(!confirm(mk+' のスナップショットを削除しますか？'))return;
+  const snaps=getSnapshots();
+  delete snaps[mk];
+  localStorage.setItem(SNAPSHOT_KEY,JSON.stringify(snaps));
+  renderSnapshotList();
+  showToast(mk+' を削除しました');
+}
+
+// ============================================================
 // 初期化
 // ============================================================
 loadStorage();
 const _m=getMonths();if(_m.length){CURRENT_MONTH=_m[0];render();}
 renderCardBar();
+autoSnapshot();
 </script>
+<!-- スナップショット過去ログ モーダル -->
+<div class="modal-overlay" id="snapshot-modal" onclick="if(event.target===this)closeSnapshotLog()" style="display:none;">
+  <div class="modal-box" style="max-width:480px;">
+    <div class="modal-title">📷 過去ログ</div>
+    <div class="modal-sub">月次スナップショット一覧</div>
+    <div id="snapshot-list" style="max-height:420px;overflow-y:auto;display:flex;flex-direction:column;gap:8px;margin:10px 0;"></div>
+    <div style="display:flex;gap:8px;margin-top:4px;">
+      <button onclick="saveSnapshotNow()" style="flex:1;padding:9px;background:var(--navy);color:#fff;border:none;border-radius:10px;font-size:.77rem;font-weight:700;cursor:pointer;">💾 今すぐ保存</button>
+      <button class="btn-cancel" onclick="closeSnapshotLog()">閉じる</button>
+    </div>
+  </div>
+</div>
 </body>
 </html>
