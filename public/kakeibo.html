@@ -1397,11 +1397,12 @@ function renderPie(exp){
 }
 
 function getEffectiveIncForMonth(mk){
-  // 優先: 月別上書き > index.html設定値 > 記録済み収入
+  // 優先: 月別上書き > 設定値+手動収入 > 記録済み収入
   if(INCOME_OVERRIDE[mk]!=null) return INCOME_OVERRIDE[mk];
   const idxInc=getIndexMonthlyIncome();
-  if(idxInc&&idxInc.total>0) return Math.round(idxInc.total*10000);
-  return ALL_TXN.filter(t=>t.monthKey===mk&&t.type==='income').reduce((s,t)=>s+t.amount,0);
+  const recInc=ALL_TXN.filter(t=>t.monthKey===mk&&t.type==='income').reduce((s,t)=>s+t.amount,0);
+  if(idxInc&&idxInc.total>0) return Math.round(idxInc.total*10000)+recInc;
+  return recInc;
 }
 function renderBarChart(months){
   const data=months.slice(0,6).reverse().map(mk=>{
@@ -1607,8 +1608,9 @@ function renderAnnual(){
     const recInc=ALL_TXN.filter(t=>t.monthKey===mk&&t.type==='income').reduce((s,t)=>s+t.amount,0);
     // 記録済み収入があればそれを使用、なければ設定値（未来月はスキップ）
     const isPast=mk<=thisMonth;
-    const inc=recInc>0?recInc:(settingsMonthly>0&&isPast?settingsMonthly:0);
-    const fromSettings=recInc===0&&inc>0;
+    const baseInc=settingsMonthly>0&&isPast?settingsMonthly:0;
+    const inc=baseInc>0?(baseInc+recInc):(recInc>0?recInc:0);
+    const fromSettings=baseInc>0;
     totalInc+=inc;totalExp+=exp;
     return{mk,exp,inc,recInc,fromSettings,savings:inc-exp,rate:inc>0?Math.round((inc-exp)/inc*100):null};
   });
