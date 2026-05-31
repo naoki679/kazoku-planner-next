@@ -1683,6 +1683,52 @@ function getSnapshots(){
   try{return JSON.parse(localStorage.getItem(SNAPSHOT_KEY)||'{}');}catch(e){return {};}
 }
 
+// ============================================================
+// 全データ バックアップ / リストア
+// ============================================================
+const ALL_BACKUP_KEYS=[
+  'kakeibo_v1','kakeibo_cards_v1','kakeibo_budget_v1','kakeibo_recurring_v1',
+  'kakeibo_income_override_v1','lifeplan_bs_v2','lifeplan_events_v1',
+  'lifeplan_owners_v1','lifeplan_family_v1','lifeplan_display_v1',
+  'lifeplan_custom_owners_v1','lifePlanSim_private_v1',
+  'lifePlanSim_onboarded_v1','kazoku_snapshots_v1'
+];
+
+function exportAllData(){
+  const data={version:1,exportedAt:new Date().toISOString(),store:{}};
+  ALL_BACKUP_KEYS.forEach(k=>{
+    const v=localStorage.getItem(k);
+    if(v!=null) data.store[k]=v;
+  });
+  const blob=new Blob([JSON.stringify(data,null,2)],{type:'application/json'});
+  const url=URL.createObjectURL(blob);
+  const a=document.createElement('a');
+  a.href=url;
+  const d=new Date();
+  a.download=`kazoku_backup_${d.getFullYear()}${String(d.getMonth()+1).padStart(2,'0')}${String(d.getDate()).padStart(2,'0')}.json`;
+  a.click();
+  URL.revokeObjectURL(url);
+  showToast('バックアップファイルを保存しました');
+}
+
+function importAllData(e){
+  const file=e.target.files[0];
+  if(!file)return;
+  const reader=new FileReader();
+  reader.onload=ev=>{
+    try{
+      const data=JSON.parse(ev.target.result);
+      if(!data.store||data.version!==1){showToast('形式が正しくありません','warn');return;}
+      if(!confirm('インポートすると現在の全データが上書きされます。続けますか？')){e.target.value='';return;}
+      Object.entries(data.store).forEach(([k,v])=>localStorage.setItem(k,v));
+      showToast('復元しました。ページを再読み込みします...');
+      setTimeout(()=>location.reload(),1200);
+    }catch(err){showToast('読み込みに失敗しました','warn');}
+  };
+  reader.readAsText(file);
+  e.target.value='';
+}
+
 function buildSnapshotData(monthKey){
   const txns=ALL_TXN.filter(t=>t.monthKey===monthKey);
   const inc=txns.filter(t=>t.type==='income').reduce((s,t)=>s+t.amount,0);
@@ -1812,11 +1858,21 @@ autoSnapshot();
 <!-- スナップショット過去ログ モーダル -->
 <div class="modal-overlay" id="snapshot-modal" onclick="if(event.target===this)closeSnapshotLog()" style="display:none;">
   <div class="modal-box" style="max-width:480px;">
-    <div class="modal-title">📷 過去ログ</div>
-    <div class="modal-sub">月次スナップショット一覧</div>
-    <div id="snapshot-list" style="max-height:420px;overflow-y:auto;display:flex;flex-direction:column;gap:8px;margin:10px 0;"></div>
-    <div style="display:flex;gap:8px;margin-top:4px;">
-      <button onclick="saveSnapshotNow()" style="flex:1;padding:9px;background:var(--navy);color:#fff;border:none;border-radius:10px;font-size:.77rem;font-weight:700;cursor:pointer;">💾 今すぐ保存</button>
+    <div class="modal-title">💾 バックアップ</div>
+    <div class="modal-sub">全データを保存・復元できます</div>
+    <!-- バックアップ操作 -->
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin:12px 0 8px;">
+      <button onclick="exportAllData()" style="padding:12px 8px;background:var(--navy);color:#fff;border:none;border-radius:10px;font-size:.77rem;font-weight:700;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:5px;">⬇️ エクスポート<br><span style="font-size:.6rem;opacity:.8;">JSONファイルに保存</span></button>
+      <label style="padding:12px 8px;background:#059669;color:#fff;border-radius:10px;font-size:.77rem;font-weight:700;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:5px;text-align:center;">⬆️ インポート<br><span style="font-size:.6rem;opacity:.8;">JSONから復元</span><input type="file" accept=".json" onchange="importAllData(event)" style="display:none;"></label>
+    </div>
+    <div style="background:#fef9f0;border:1.5px solid #fed7aa;border-radius:8px;padding:8px 10px;font-size:.65rem;color:#92400e;margin-bottom:10px;">
+      ⚠️ インポートすると現在のデータは上書きされます
+    </div>
+    <!-- スナップショット -->
+    <div style="font-size:.72rem;font-weight:700;color:var(--navy);margin-bottom:6px;border-top:1px solid #e2e8f0;padding-top:10px;">📷 スナップショット（過去ログ）</div>
+    <div id="snapshot-list" style="max-height:280px;overflow-y:auto;display:flex;flex-direction:column;gap:8px;margin-bottom:8px;"></div>
+    <div style="display:flex;gap:8px;">
+      <button onclick="saveSnapshotNow()" style="flex:1;padding:9px;background:#4f46e5;color:#fff;border:none;border-radius:10px;font-size:.77rem;font-weight:700;cursor:pointer;">📷 今の状態を保存</button>
       <button class="btn-cancel" onclick="closeSnapshotLog()">閉じる</button>
     </div>
   </div>
