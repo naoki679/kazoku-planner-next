@@ -163,7 +163,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
     </div>
 
     <!-- 固定費適用バナー -->
-    <div id="recurring-banner" style="display:none;background:#fef9f0;border:1.5px solid #fed7aa;border-radius:12px;padding:10px 14px;margin-bottom:10px;display:flex;align-items:center;justify-content:space-between;gap:10px;">
+    <div id="recurring-banner" style="display:none;background:#fef9f0;border:1.5px solid #fed7aa;border-radius:12px;padding:10px 14px;margin-bottom:10px;align-items:center;justify-content:space-between;gap:10px;">
       <span style="font-size:.75rem;color:#92400e;font-weight:700;">🔁 今月の固定費がまだ計上されていません</span>
       <button onclick="applyRecurring()" style="background:#f97316;color:#fff;border:none;padding:6px 14px;border-radius:8px;font-size:.72rem;font-weight:700;cursor:pointer;">今月分を計上</button>
     </div>
@@ -560,7 +560,17 @@ function renderCardBar(){
 // 固定費管理
 // ============================================================
 function openRecurringModal(){renderRecurringList();document.getElementById('recurring-modal').style.display='block';}
-function closeRecurringModal(){document.getElementById('recurring-modal').style.display='none';checkRecurringBanner();render();}
+function closeRecurringModal(){
+  document.getElementById('recurring-modal').style.display='none';
+  // 未計上の固定費があれば自動計上
+  if(RECURRING.length&&CURRENT_MONTH){
+    const hasRec=ALL_TXN.some(t=>t.monthKey===CURRENT_MONTH&&t.source==='recurring');
+    if(!hasRec) applyRecurring();
+    else render();
+  } else {
+    checkRecurringBanner();render();
+  }
+}
 function renderRecurringList(){
   const el=document.getElementById('rec-list');
   if(!RECURRING.length){el.innerHTML='<div style="text-align:center;color:#94a3b8;font-size:.76rem;padding:8px;">固定費が未登録です</div>';return;}
@@ -1403,9 +1413,15 @@ function renderBarChart(months){
   const maxVal=Math.max(...data.map(d=>Math.max(d.exp,d.inc)),1);
   document.getElementById('bar-chart').innerHTML=data.map(d=>`
     <div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:2px;">
-      <div style="width:100%;display:flex;gap:3px;align-items:flex-end;height:80px;">
-        <div style="flex:1;background:#3b82f6${d.active?'':'80'};height:${Math.max(3,Math.round(d.inc/maxVal*76))}px;border-radius:3px 3px 0 0;" title="収入 ${(d.inc/10000).toFixed(1)}万"></div>
-        <div style="flex:1;background:#f97316${d.active?'':'80'};height:${Math.max(3,Math.round(d.exp/maxVal*76))}px;border-radius:3px 3px 0 0;" title="支出 ${(d.exp/10000).toFixed(1)}万"></div>
+      <div style="width:100%;display:flex;gap:3px;align-items:flex-end;height:100px;">
+        <div style="flex:1;display:flex;flex-direction:column;align-items:center;justify-content:flex-end;gap:1px;">
+          <div style="font-size:.52rem;font-weight:700;color:#3b82f6;white-space:nowrap;">${d.inc?((d.inc/10000).toFixed(1))+'万':''}</div>
+          <div style="width:100%;background:#3b82f6${d.active?'':'80'};height:${Math.max(3,Math.round(d.inc/maxVal*76))}px;border-radius:3px 3px 0 0;"></div>
+        </div>
+        <div style="flex:1;display:flex;flex-direction:column;align-items:center;justify-content:flex-end;gap:1px;">
+          <div style="font-size:.52rem;font-weight:700;color:#f97316;white-space:nowrap;">${d.exp?((d.exp/10000).toFixed(1))+'万':''}</div>
+          <div style="width:100%;background:#f97316${d.active?'':'80'};height:${Math.max(3,Math.round(d.exp/maxVal*76))}px;border-radius:3px 3px 0 0;"></div>
+        </div>
       </div>
       <div style="font-size:.58rem;font-weight:${d.active?'800':'400'};color:${d.active?'var(--navy)':'var(--muted)'};">${d.label}</div>
     </div>`).join('');
