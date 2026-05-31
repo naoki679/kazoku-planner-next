@@ -430,8 +430,8 @@ const CATEGORY_RULES=[
   {cat:'日用品',icon:'🧴',keywords:['ダイソー','ﾀﾞｲｿ','100均','ニトリ','ﾆﾄﾘ','カインズ','ドン・キホーテ','東急ハンズ']},
   {cat:'ショッピング',icon:'👗',keywords:['チヨダ','阪急','ﾕﾆｸﾛ','ユニクロ','ZARA','GU','メルカリ','楽天ＳＰ']},
 ];
-const CAT_ICONS={'食費':'🛒','外食':'🍜','保険':'🛡','通信費':'📱','交通費':'🚃','移動交通費':'🚗','投資':'📈','サブスク':'🎬','医療費':'💊','日用品':'🧴','子ども費':'👶','ショッピング':'👗','その他':'💰','給与':'💼','ボーナス':'🎁','副収入':'💡','その他収入':'📦','家賃':'🏠','住宅ローン':'🏠','光熱費':'💡','固定費':'🔁'};
-const CAT_COLORS={'食費':'#16a34a','外食':'#f97316','保険':'#2563eb','通信費':'#7c3aed','交通費':'#0891b2','移動交通費':'#0369a1','投資':'#d97706','サブスク':'#db2777','医療費':'#dc2626','日用品':'#65a30d','子ども費':'#0284c7','ショッピング':'#9333ea','その他':'#64748b','給与':'#16a34a','ボーナス':'#059669','副収入':'#0d9488','その他収入':'#64748b','家賃':'#f97316','住宅ローン':'#ea580c','光熱費':'#f59e0b','固定費':'#f97316'};
+const CAT_ICONS={'食費':'🛒','外食':'🍜','保険':'🛡','通信費':'📱','交通費':'🚃','移動交通費':'🚗','移動交通費':'🚗','投資':'📈','サブスク':'🎬','医療費':'💊','日用品':'🧴','子ども費':'👶','ショッピング':'👗','その他':'💰','給与':'💼','ボーナス':'🎁','副収入':'💡','その他収入':'📦','家賃':'🏠','住宅ローン':'🏠','光熱費':'💡','固定費':'🔁'};
+const CAT_COLORS={'食費':'#16a34a','外食':'#f97316','保険':'#2563eb','通信費':'#7c3aed','交通費':'#0891b2','移動交通費':'#0369a1','移動交通費':'#0369a1','投資':'#d97706','サブスク':'#db2777','医療費':'#dc2626','日用品':'#65a30d','子ども費':'#0284c7','ショッピング':'#9333ea','その他':'#64748b','給与':'#16a34a','ボーナス':'#059669','副収入':'#0d9488','その他収入':'#64748b','家賃':'#f97316','住宅ローン':'#ea580c','光熱費':'#f59e0b','固定費':'#f97316'};
 const CARD_PALETTE=['#1a2b4a','#2563eb','#7c3aed','#db2777','#dc2626','#f97316','#16a34a','#0891b2'];
 
 // ============================================================
@@ -444,6 +444,7 @@ const RECURRING_KEY='kakeibo_recurring_v1';
 const CAT_MEMORY_KEY='kakeibo_cat_memory_v1';
 const ANNUAL_KEY='kakeibo_annual_v1';
 const INCOME_OVERRIDE_KEY='kakeibo_income_override_v1';
+const CUSTOM_CAT_KEY='kakeibo_custom_cats_v1';
 const CUSTOM_CAT_KEY='kakeibo_custom_cats_v1';
 
 let CARDS=[], ALL_TXN=[], BUDGETS={}, RECURRING=[], CAT_MEMORY={}, ANNUAL_EVENTS=[];
@@ -462,6 +463,8 @@ function loadStorage(){
   try{ANNUAL_EVENTS=JSON.parse(localStorage.getItem(ANNUAL_KEY)||'[]');}catch(e){ANNUAL_EVENTS=[];}
   try{INCOME_OVERRIDE=JSON.parse(localStorage.getItem(INCOME_OVERRIDE_KEY)||'{}');}catch(e){INCOME_OVERRIDE={};}
   try{CUSTOM_CATS=JSON.parse(localStorage.getItem(CUSTOM_CAT_KEY)||'[]');}catch(e){CUSTOM_CATS=[];}
+  CUSTOM_CATS.forEach(c=>{CAT_ICONS[c.name]=c.icon;CAT_COLORS[c.name]=c.color;});
+  try{CUSTOM_CATS=JSON.parse(localStorage.getItem(CUSTOM_CAT_KEY)||'[]');}catch(e){CUSTOM_CATS=[];}
   // カスタムカテゴリをCAT_ICONS/CAT_COLORSに動的追加
   CUSTOM_CATS.forEach(c=>{CAT_ICONS[c.name]=c.icon;CAT_COLORS[c.name]=c.color;});
   ALL_TXN.forEach(t=>{if(!t.cardId)t.cardId='unknown';if(!t.type)t.type='expense';if(!t.id)t.id=genId();});
@@ -474,6 +477,7 @@ function saveStorage(){
   localStorage.setItem(CAT_MEMORY_KEY,JSON.stringify(CAT_MEMORY));
   localStorage.setItem(ANNUAL_KEY,JSON.stringify(ANNUAL_EVENTS));
   localStorage.setItem(INCOME_OVERRIDE_KEY,JSON.stringify(INCOME_OVERRIDE));
+  localStorage.setItem(CUSTOM_CAT_KEY,JSON.stringify(CUSTOM_CATS));
   localStorage.setItem(CUSTOM_CAT_KEY,JSON.stringify(CUSTOM_CATS));
 }
 function genId(){return Date.now().toString(36)+Math.random().toString(36).slice(2,6);}
@@ -1192,7 +1196,6 @@ function renderFilterBar(){
     cards.map(c=>`<button class="filter-chip${FILTER_CARD===c.id?' on':''}" style="color:${c.color};${FILTER_CARD===c.id?'background:'+c.color+';color:#fff!important;border-color:'+c.color:''}" onclick="setFilter('${c.id}')">${c.name}</button>`).join('');
 }
 function setFilter(id){FILTER_CARD=id;FILTER_CAT='all';render();}
-
 // ============================================================
 // カスタムカテゴリ管理
 // ============================================================
@@ -1207,10 +1210,8 @@ function openCustomCatModal(){
       <span style="width:14px;height:14px;border-radius:3px;background:${c.color};display:inline-block;"></span>
       <button onclick="deleteCustomCat(${i})" style="background:none;border:none;color:#dc2626;cursor:pointer;font-size:.8rem;padding:2px 6px;">✕</button>
     </div>`).join('');
-
-  const iconOpts=CUSTOM_CAT_ICONS_LIST.map(ic=>`<button onclick="selectCatIcon(this,'${ic}')" style="font-size:1.3rem;padding:4px 6px;border:2px solid transparent;border-radius:8px;cursor:pointer;background:none;" title="${ic}">${ic}</button>`).join('');
+  const iconOpts=CUSTOM_CAT_ICONS_LIST.map(ic=>`<button onclick="selectCatIcon(this,'${ic}')" style="font-size:1.3rem;padding:4px 6px;border:2px solid transparent;border-radius:8px;cursor:pointer;background:none;">${ic}</button>`).join('');
   const colorOpts=CUSTOM_CAT_COLORS_LIST.map(cl=>`<button onclick="selectCatColor(this,'${cl}')" style="width:22px;height:22px;border-radius:50%;background:${cl};border:2px solid transparent;cursor:pointer;"></button>`).join('');
-
   const html=`<div id="custom-cat-modal" style="position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:9999;display:flex;align-items:center;justify-content:center;" onclick="if(event.target===this)closeCustomCatModal()">
     <div style="background:#fff;border-radius:16px;padding:20px;width:min(94vw,380px);max-height:85vh;overflow-y:auto;box-shadow:0 8px 32px rgba(0,0,0,.18);">
       <div style="font-weight:800;font-size:1rem;margin-bottom:12px;">🏷️ カテゴリを追加</div>
@@ -1219,11 +1220,11 @@ function openCustomCatModal(){
         <div style="font-size:.75rem;font-weight:700;color:#475569;margin-bottom:6px;">カテゴリ名</div>
         <input id="new-cat-name" type="text" maxlength="12" placeholder="例: 旅行・レジャー" style="width:100%;padding:9px 12px;border:1.5px solid #cbd5e1;border-radius:10px;font-size:.9rem;box-sizing:border-box;margin-bottom:10px;">
         <div style="font-size:.75rem;font-weight:700;color:#475569;margin-bottom:6px;">アイコン</div>
-        <div id="cat-icon-picker" style="display:flex;flex-wrap:wrap;gap:2px;margin-bottom:10px;">${iconOpts}</div>
+        <div id="cat-icon-picker" style="display:flex;flex-wrap:wrap;gap:2px;margin-bottom:6px;">${iconOpts}</div>
         <input id="new-cat-icon" type="text" maxlength="2" placeholder="絵文字を直接入力も可" style="width:100%;padding:7px 10px;border:1.5px solid #cbd5e1;border-radius:8px;font-size:.85rem;box-sizing:border-box;margin-bottom:10px;">
         <div style="font-size:.75rem;font-weight:700;color:#475569;margin-bottom:6px;">カラー</div>
-        <div id="cat-color-picker" style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:14px;">${colorOpts}</div>
-        <input id="new-cat-color" type="color" value="#0891b2" style="width:36px;height:28px;border:none;padding:0;cursor:pointer;border-radius:6px;margin-bottom:10px;">
+        <div id="cat-color-picker" style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:8px;">${colorOpts}</div>
+        <input id="new-cat-color" type="color" value="#0891b2" style="width:36px;height:28px;border:none;padding:0;cursor:pointer;border-radius:6px;margin-bottom:14px;">
         <div style="display:flex;gap:8px;">
           <button onclick="closeCustomCatModal()" style="flex:1;padding:10px;background:#f1f5f9;border:none;border-radius:10px;cursor:pointer;font-weight:700;">閉じる</button>
           <button onclick="addCustomCat()" style="flex:1;padding:10px;background:#2563eb;color:#fff;border:none;border-radius:10px;cursor:pointer;font-weight:700;">追加</button>
@@ -1233,7 +1234,6 @@ function openCustomCatModal(){
   </div>`;
   document.getElementById('custom-cat-modal')?.remove();
   document.body.insertAdjacentHTML('beforeend',html);
-  // 最初のアイコン・カラーを選択状態に
   document.getElementById('new-cat-icon').value=CUSTOM_CAT_ICONS_LIST[0];
   selectCatColor(document.querySelector('#cat-color-picker button'),CUSTOM_CAT_COLORS_LIST[0]);
 }
@@ -1259,22 +1259,20 @@ function addCustomCat(){
     CAT_ICONS[name]=icon;
     CAT_COLORS[name]=color;
     localStorage.setItem(CUSTOM_CAT_KEY,JSON.stringify(CUSTOM_CATS));
-    showToast(`✅「${name}」を追加しました`);
-    // カテゴリ選択ドロップダウンを更新
     const mCat=document.getElementById('m-category');
     if(mCat) mCat.innerHTML=Object.keys(CAT_COLORS).filter(c=>!['給与','ボーナス','副収入','その他収入'].includes(c)).map(c=>`<option value="${c}">${CAT_ICONS[c]||''} ${c}</option>`).join('');
+    showToast('✅「'+name+'」を追加しました');
   }
   closeCustomCatModal();
-  openCustomCatModal(); // 一覧を更新して再表示
+  openCustomCatModal();
 }
 function deleteCustomCat(idx){
-  const c=CUSTOM_CATS[idx];
-  if(!c)return;
+  const c=CUSTOM_CATS[idx];if(!c)return;
   CUSTOM_CATS.splice(idx,1);
   delete CAT_ICONS[c.name];
   delete CAT_COLORS[c.name];
   localStorage.setItem(CUSTOM_CAT_KEY,JSON.stringify(CUSTOM_CATS));
-  showToast(`🗑️「${c.name}」を削除しました`);
+  showToast('🗑️「'+c.name+'」を削除しました');
   closeCustomCatModal();
   openCustomCatModal();
 }
@@ -1313,6 +1311,7 @@ function saveIncomeOverride(){
     delete INCOME_OVERRIDE[CURRENT_MONTH];
   }
   localStorage.setItem(INCOME_OVERRIDE_KEY,JSON.stringify(INCOME_OVERRIDE));
+  localStorage.setItem(CUSTOM_CAT_KEY,JSON.stringify(CUSTOM_CATS));
   closeIncomeEdit();
   render();
   showToast('✅ 収入を更新しました');
@@ -1320,6 +1319,7 @@ function saveIncomeOverride(){
 function clearIncomeOverride(){
   delete INCOME_OVERRIDE[CURRENT_MONTH];
   localStorage.setItem(INCOME_OVERRIDE_KEY,JSON.stringify(INCOME_OVERRIDE));
+  localStorage.setItem(CUSTOM_CAT_KEY,JSON.stringify(CUSTOM_CATS));
   closeIncomeEdit();
   render();
   showToast('🔄 設定値に戻しました');
