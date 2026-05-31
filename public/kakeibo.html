@@ -562,11 +562,11 @@ function renderCardBar(){
 function openRecurringModal(){renderRecurringList();document.getElementById('recurring-modal').style.display='block';}
 function closeRecurringModal(){
   document.getElementById('recurring-modal').style.display='none';
-  // 未計上の固定費があれば自動計上
-  if(RECURRING.length&&CURRENT_MONTH){
-    const hasRec=ALL_TXN.some(t=>t.monthKey===CURRENT_MONTH&&t.source==='recurring');
-    if(!hasRec) applyRecurring();
-    else render();
+  if(CURRENT_MONTH){
+    // 今月の固定費TXNを削除して再計上（編集内容を確実に反映）
+    ALL_TXN=ALL_TXN.filter(t=>!(t.monthKey===CURRENT_MONTH&&t.source==='recurring'));
+    if(RECURRING.length) applyRecurring();
+    else {saveStorage();checkRecurringBanner();render();}
   } else {
     checkRecurringBanner();render();
   }
