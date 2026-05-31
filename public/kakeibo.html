@@ -561,7 +561,6 @@ function renderRecurringList(){
       <select onchange="updateRec('${r.id}','category',this.value)" style="padding:6px;border:1.5px solid var(--border);border-radius:7px;font-size:.7rem;">
         ${cats.map(c=>`<option value="${c}" ${c===r.category?'selected':''}>${CAT_ICONS[c]||''} ${c}</option>`).join('')}
       </select>
-      <button onclick="saveRec('${r.id}','rec-${r.id}')" style="background:#dcfce7;border:1.5px solid #86efac;border-radius:7px;color:#15803d;cursor:pointer;font-size:.7rem;font-weight:700;padding:4px 8px;white-space:nowrap;">✅完了</button>
       <button onclick="deleteRec('${r.id}')" style="background:none;border:none;color:#94a3b8;cursor:pointer;font-size:1rem;">🗑</button>
     </div>`).join('');
 }
@@ -571,22 +570,22 @@ function addRecurringRow(){
 }
 function updateRec(id,key,val){
   const r=RECURRING.find(r=>r.id===id);
-  if(r){r[key]=key==='amount'?(parseInt(val)||0):val;saveStorage();}
-}
-function saveRec(id,rowId){
-  // 行の入力値を読み取って即時保存し、フラッシュ表示
-  const row=document.getElementById(rowId);
-  if(!row)return;
-  const inputs=row.querySelectorAll('input');
-  const sel=row.querySelector('select');
-  const r=RECURRING.find(r=>r.id===id);
   if(!r)return;
-  if(inputs[0])r.name=inputs[0].value||r.name;
-  if(inputs[1])r.amount=parseInt(inputs[1].value)||r.amount;
-  if(sel)r.category=sel.value;
+  const oldName=r.name;
+  const oldCat=r.category;
+  r[key]=key==='amount'?(parseInt(val)||0):val;
   saveStorage();
-  showToast('✅ 固定費を保存しました');
+  // 既に計上済みの今月分も同期更新
+  ALL_TXN.forEach(t=>{
+    if(t.source==='recurring'&&t.monthKey===CURRENT_MONTH){
+      if(key==='name'&&t.name===oldName) t.name=r.name;
+      if(key==='category'&&t.name===r.name&&t.category===oldCat) t.category=r.category;
+      if(key==='amount'&&t.name===r.name) t.amount=r.amount;
+    }
+  });
+  saveStorage();
 }
+
 function deleteRec(id){RECURRING=RECURRING.filter(r=>r.id!==id);saveStorage();renderRecurringList();}
 // ============================================================
 // 年間イベント支出
