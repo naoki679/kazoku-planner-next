@@ -4288,6 +4288,25 @@ const OB_COLORS = ['#2563eb','#16a34a','#9333ea','#ea580c'];
 
 function showOnboarding(){
   OB_STEP = 1;
+  // サイドバーの現在値をウィザードに引き継ぐ
+  const curAge       = document.getElementById('ownerAge')?.value;
+  const curInc       = document.getElementById('monthlyIncome')?.value;
+  const curSpouseOn  = document.getElementById('spouseOn')?.checked ?? false;
+  const curSpouseInc = document.getElementById('spouseIncome')?.value;
+  const curBonusOn   = document.getElementById('bonusOn')?.checked ?? false;
+  const curBonus     = document.getElementById('bonusAnnual')?.value;
+  OB_SPOUSE = curSpouseOn;
+  const obAge = document.getElementById('ob-age');
+  if(obAge && curAge) obAge.value = curAge;
+  const obInc = document.getElementById('ob-income');
+  if(obInc && curInc) obInc.value = curInc;
+  const obSpouseInc = document.getElementById('ob-spouse-inc');
+  if(obSpouseInc && curSpouseInc) obSpouseInc.value = curSpouseInc;
+  const obBonus = document.getElementById('ob-bonus');
+  if(obBonus && curBonus) obBonus.value = curBonus;
+  // 配偶者ボタンの見た目を現在の状態に合わせる
+  setTimeout(()=>{ if(curSpouseOn) obSetSpouse(true); }, 50);
+
   renderObStep();
   const wiz = document.getElementById('ob-modal');
   wiz.style.display = 'flex';
