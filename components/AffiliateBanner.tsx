@@ -22,25 +22,14 @@ interface Banner {
   tag: string;
 }
 
-// ===== ここにA8.netのタグを貼り付けてください =====
+// ===== A8.net 広告タグ =====
 const BANNERS: Banner[] = [
   {
-    id: 'placeholder1',
-    label: '学資保険',
-    // TODO: A8.netで取得したタグに差し替えてください
-    tag: `<a href="https://px.a8.net/svt/ejp?a8mat=【YOUR_A8_TAG_1】" rel="nofollow" target="_blank">
-      <img src="https://via.placeholder.com/300x100/1a2b4a/ffffff?text=学資保険バナー" border="0" width="300" height="100" alt="学資保険" />
-    </a>
-    <img border="0" width="1" height="1" src="https://www11.a8.net/0.gif?a8mat=【YOUR_A8_TAG_1】" alt="">`,
-  },
-  {
-    id: 'placeholder2',
-    label: 'iDeCo・NISA',
-    // TODO: A8.netで取得したタグに差し替えてください
-    tag: `<a href="https://px.a8.net/svt/ejp?a8mat=【YOUR_A8_TAG_2】" rel="nofollow" target="_blank">
-      <img src="https://via.placeholder.com/300x100/2d3f63/ffffff?text=iDeCo+NISA" border="0" width="300" height="100" alt="iDeCo・NISA" />
-    </a>
-    <img border="0" width="1" height="1" src="https://www11.a8.net/0.gif?a8mat=【YOUR_A8_TAG_2】" alt="">`,
+    id: 'matsuisec',
+    label: '松井証券（iDeCo・NISA）',
+    tag: `<a href="https://px.a8.net/svt/ejp?a8mat=455HNM+4HCJ9E+3XCC+6IP2P" rel="nofollow">
+<img border="0" width="468" height="60" alt="" src="https://www21.a8.net/svt/bgt?aid=250518946271&wid=003&eno=01&mid=s00000018318001095000&mc=1"></a>
+<img border="0" width="1" height="1" src="https://www13.a8.net/0.gif?a8mat=455HNM+4HCJ9E+3XCC+6IP2P" alt="">`,
   },
 ];
 // ===================================================
