@@ -4381,17 +4381,17 @@ function obApplyIncome(){
     CONFIG.retireCurrent = ret;
     RETIRE_CURRENT = ret;
   }
-  // 配偶者収入を反映
+  buildState(); recalc();
+
+  // recalc()後に配偶者・ボーナスを上書き設定してから再計算
   if(spouseOnEl) spouseOnEl.checked = OB_SPOUSE;
-  if(OB_SPOUSE && !isNaN(spouseInc) && spouseInc > 0 && spouseIncEl){
+  if(OB_SPOUSE && !isNaN(spouseInc) && spouseInc >= 0 && spouseIncEl){
     spouseIncEl.value = spouseInc;
   }
-  // ボーナスを反映
   const hasBonus = !isNaN(bonusVal) && bonusVal > 0;
   if(bonusOnEl) bonusOnEl.checked = hasBonus;
   if(hasBonus && bonusAnnEl) bonusAnnEl.value = bonusVal;
-
-  buildState(); recalc();
+  recalc();
 }
 function obApplySavings(){
   const edu = parseFloat(document.getElementById('ob-edu-slider')?.value);
