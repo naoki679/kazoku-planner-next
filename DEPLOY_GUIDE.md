@@ -65,4 +65,85 @@ git push -u origin main
 
 **発行されるURL例:**
 ```
-https://kazoku-planner-next.pages.d
+https://kazoku-planner-next.pages.dev
+```
+
+> ✅ 独自ドメインも無料で設定できます（Cloudflare DNS経由）
+
+---
+
+## STEP 3：A8.net アフィリエイト登録
+
+1. https://www.a8.net/ にアクセスしてアカウント作成（無料）
+2. ログイン後「広告主を探す」→ 以下のカテゴリで検索：
+
+   | キーワード | 狙う広告主の例 |
+   |-----------|--------------|
+   | 学資保険 | ソニー生命、フコク生命、明治安田生命 |
+   | iDeCo / NISA | SBI証券、楽天証券、マネックス証券 |
+   | FP相談 | 保険チャンネル、ほけんのぜんぶ、FP相談ねっと |
+   | 教育ローン | オリコ、みずほ銀行教育ローン |
+
+3. 気に入った広告主の「提携申請」をクリック
+4. 承認（即時〜数日）されたら「広告タグ取得」→ バナーサイズ `300×100` を選択してタグをコピー
+
+---
+
+## STEP 4：バナータグをコードに貼り付け
+
+### index.html（トップページ）
+
+`public/index.html` の `<!-- バナー1: 学資保険 -->` 付近の `<!-- TODO -->` コメントを探し、
+取得したA8.netタグに差し替えてください：
+
+```html
+<!-- 差し替え前（プレースホルダー） -->
+<a href="https://px.a8.net/svt/ejp?a8mat=【YOUR_A8_TAG_GAKUSHI】" ...>
+
+<!-- 差し替え後（A8.netから取得した実際のタグ） -->
+<a href="https://px.a8.net/svt/ejp?a8mat=3TXXXXX_XXXXXX_XXXXX_XXXXX" rel="nofollow" target="_blank">
+  <img border="0" width="300" height="100" alt="ソニー生命学資保険"
+       src="https://www14.a8.net/0.gif?a8mat=3TXXXXX...（実際のURL）" />
+</a>
+<img border="0" width="1" height="1" src="https://www11.a8.net/0.gif?a8mat=3TXXXXX..." alt="">
+```
+
+### プランナー画面（Next.js コンポーネント）
+
+`components/AffiliateBanner.tsx` の `BANNERS` 配列内の `tag` を同様に差し替えてください。
+
+---
+
+## STEP 5：更新をデプロイ
+
+バナータグを貼り替えたら：
+
+```powershell
+cd C:\Users\camvp\Documents\Claude\Projects\kazoku-planner-next
+git add .
+git commit -m "feat: add A8.net affiliate banners"
+git push
+```
+
+Cloudflare Pages が自動的に再ビルド・デプロイします（約2分）。
+
+---
+
+## 収益化のコツ
+
+- **FP無料相談系**が最も単価が高い（1件 2,000〜5,000円）
+- 学資保険・iDeCo系は資料請求で 500〜2,000円
+- バナーは「コンテンツに溶け込む」位置に置くとクリック率UP
+- Google Search Console に登録してSEO対策も並行して行う
+
+---
+
+## トラブルシューティング
+
+### ビルドが失敗する場合
+- Cloudflare の「Environment variables」に `NODE_VERSION=20` を追加
+- `npm run build` をローカルで実行して先にエラーを確認
+
+### バナーが表示されない場合
+- A8.netの提携がまだ「審査中」→ 承認を待つ
+- プレースホルダー画像（placehold.co）はデプロイ環境でブロックされることがある → 実際のA8タグに差し替えてください

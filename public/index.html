@@ -4380,6 +4380,17 @@ function obApplyFamily(){
   }
   buildState();
 }
+function obSetSpouse(hasSpouse){
+  OB_SPOUSE = hasSpouse;
+  // ボタンの見た目を更新
+  const yesBtn = document.getElementById('ob-spouse-yes');
+  const noBtn  = document.getElementById('ob-spouse-no');
+  if(yesBtn) { yesBtn.style.background = hasSpouse ? '#2563eb' : '#fff'; yesBtn.style.color = hasSpouse ? '#fff' : '#475569'; }
+  if(noBtn)  { noBtn.style.background  = hasSpouse ? '#fff' : '#2563eb'; noBtn.style.color  = hasSpouse ? '#475569' : '#fff'; }
+  // 配偶者収入入力欄の表示切替
+  const row = document.getElementById('ob-spouse-income-row');
+  if(row) row.style.display = hasSpouse ? 'flex' : 'none';
+}
 function obApplyIncome(){
   const age        = parseInt(document.getElementById('ob-age')?.value);
   const inc        = parseFloat(document.getElementById('ob-income')?.value);
