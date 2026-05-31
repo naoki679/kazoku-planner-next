@@ -351,7 +351,10 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
     </div>
     <div class="form-row" id="m-cat-row">
       <label class="form-label">カテゴリ</label>
-      <select id="m-category" class="form-input"></select>
+      <div style="display:flex;gap:6px;align-items:center;">
+        <select id="m-category" class="form-input" style="flex:1;"></select>
+        <button onclick="openCustomCatModal()" title="カテゴリを追加" style="padding:7px 10px;background:#f1f5f9;border:1.5px solid #e2e8f0;border-radius:8px;cursor:pointer;font-size:.8rem;white-space:nowrap;font-weight:700;color:#475569;">＋追加</button>
+      </div>
     </div>
     <div class="form-row" id="m-income-cat-row" style="display:none;">
       <label class="form-label">収入種別</label>
@@ -1189,6 +1192,92 @@ function renderFilterBar(){
     cards.map(c=>`<button class="filter-chip${FILTER_CARD===c.id?' on':''}" style="color:${c.color};${FILTER_CARD===c.id?'background:'+c.color+';color:#fff!important;border-color:'+c.color:''}" onclick="setFilter('${c.id}')">${c.name}</button>`).join('');
 }
 function setFilter(id){FILTER_CARD=id;FILTER_CAT='all';render();}
+
+// ============================================================
+// カスタムカテゴリ管理
+// ============================================================
+const CUSTOM_CAT_COLORS_LIST=['#0891b2','#7c3aed','#db2777','#16a34a','#f97316','#dc2626','#d97706','#0284c7','#9333ea','#65a30d'];
+const CUSTOM_CAT_ICONS_LIST=['🏷️','✈️','🎮','🐾','🌿','🎓','💇','🏋️','🎨','🛠️','🎪','🍺','🎵','🏠','🧳'];
+
+function openCustomCatModal(){
+  const existing=CUSTOM_CATS.map((c,i)=>`
+    <div style="display:flex;align-items:center;gap:8px;padding:6px 10px;background:#f8fafc;border-radius:8px;margin-bottom:6px;">
+      <span style="font-size:1.1rem;">${c.icon}</span>
+      <span style="flex:1;font-weight:700;font-size:.85rem;">${c.name}</span>
+      <span style="width:14px;height:14px;border-radius:3px;background:${c.color};display:inline-block;"></span>
+      <button onclick="deleteCustomCat(${i})" style="background:none;border:none;color:#dc2626;cursor:pointer;font-size:.8rem;padding:2px 6px;">✕</button>
+    </div>`).join('');
+
+  const iconOpts=CUSTOM_CAT_ICONS_LIST.map(ic=>`<button onclick="selectCatIcon(this,'${ic}')" style="font-size:1.3rem;padding:4px 6px;border:2px solid transparent;border-radius:8px;cursor:pointer;background:none;" title="${ic}">${ic}</button>`).join('');
+  const colorOpts=CUSTOM_CAT_COLORS_LIST.map(cl=>`<button onclick="selectCatColor(this,'${cl}')" style="width:22px;height:22px;border-radius:50%;background:${cl};border:2px solid transparent;cursor:pointer;"></button>`).join('');
+
+  const html=`<div id="custom-cat-modal" style="position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:9999;display:flex;align-items:center;justify-content:center;" onclick="if(event.target===this)closeCustomCatModal()">
+    <div style="background:#fff;border-radius:16px;padding:20px;width:min(94vw,380px);max-height:85vh;overflow-y:auto;box-shadow:0 8px 32px rgba(0,0,0,.18);">
+      <div style="font-weight:800;font-size:1rem;margin-bottom:12px;">🏷️ カテゴリを追加</div>
+      ${existing?`<div style="margin-bottom:12px;">${existing}</div>`:''}
+      <div style="border-top:1px solid #e2e8f0;padding-top:12px;">
+        <div style="font-size:.75rem;font-weight:700;color:#475569;margin-bottom:6px;">カテゴリ名</div>
+        <input id="new-cat-name" type="text" maxlength="12" placeholder="例: 旅行・レジャー" style="width:100%;padding:9px 12px;border:1.5px solid #cbd5e1;border-radius:10px;font-size:.9rem;box-sizing:border-box;margin-bottom:10px;">
+        <div style="font-size:.75rem;font-weight:700;color:#475569;margin-bottom:6px;">アイコン</div>
+        <div id="cat-icon-picker" style="display:flex;flex-wrap:wrap;gap:2px;margin-bottom:10px;">${iconOpts}</div>
+        <input id="new-cat-icon" type="text" maxlength="2" placeholder="絵文字を直接入力も可" style="width:100%;padding:7px 10px;border:1.5px solid #cbd5e1;border-radius:8px;font-size:.85rem;box-sizing:border-box;margin-bottom:10px;">
+        <div style="font-size:.75rem;font-weight:700;color:#475569;margin-bottom:6px;">カラー</div>
+        <div id="cat-color-picker" style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:14px;">${colorOpts}</div>
+        <input id="new-cat-color" type="color" value="#0891b2" style="width:36px;height:28px;border:none;padding:0;cursor:pointer;border-radius:6px;margin-bottom:10px;">
+        <div style="display:flex;gap:8px;">
+          <button onclick="closeCustomCatModal()" style="flex:1;padding:10px;background:#f1f5f9;border:none;border-radius:10px;cursor:pointer;font-weight:700;">閉じる</button>
+          <button onclick="addCustomCat()" style="flex:1;padding:10px;background:#2563eb;color:#fff;border:none;border-radius:10px;cursor:pointer;font-weight:700;">追加</button>
+        </div>
+      </div>
+    </div>
+  </div>`;
+  document.getElementById('custom-cat-modal')?.remove();
+  document.body.insertAdjacentHTML('beforeend',html);
+  // 最初のアイコン・カラーを選択状態に
+  document.getElementById('new-cat-icon').value=CUSTOM_CAT_ICONS_LIST[0];
+  selectCatColor(document.querySelector('#cat-color-picker button'),CUSTOM_CAT_COLORS_LIST[0]);
+}
+function closeCustomCatModal(){document.getElementById('custom-cat-modal')?.remove();}
+function selectCatIcon(btn,icon){
+  document.getElementById('new-cat-icon').value=icon;
+  document.querySelectorAll('#cat-icon-picker button').forEach(b=>b.style.borderColor='transparent');
+  btn.style.borderColor='#2563eb';
+}
+function selectCatColor(btn,color){
+  document.getElementById('new-cat-color').value=color;
+  document.querySelectorAll('#cat-color-picker button').forEach(b=>b.style.borderColor='transparent');
+  if(btn) btn.style.borderColor='#1e293b';
+}
+function addCustomCat(){
+  const name=document.getElementById('new-cat-name').value.trim();
+  const icon=document.getElementById('new-cat-icon').value.trim()||'🏷️';
+  const color=document.getElementById('new-cat-color').value||'#64748b';
+  if(!name){showToast('カテゴリ名を入力してください');return;}
+  if(CAT_ICONS[name]&&!CUSTOM_CATS.find(c=>c.name===name)){showToast('そのカテゴリ名はすでに存在します');return;}
+  if(!CUSTOM_CATS.find(c=>c.name===name)){
+    CUSTOM_CATS.push({name,icon,color});
+    CAT_ICONS[name]=icon;
+    CAT_COLORS[name]=color;
+    localStorage.setItem(CUSTOM_CAT_KEY,JSON.stringify(CUSTOM_CATS));
+    showToast(`✅「${name}」を追加しました`);
+    // カテゴリ選択ドロップダウンを更新
+    const mCat=document.getElementById('m-category');
+    if(mCat) mCat.innerHTML=Object.keys(CAT_COLORS).filter(c=>!['給与','ボーナス','副収入','その他収入'].includes(c)).map(c=>`<option value="${c}">${CAT_ICONS[c]||''} ${c}</option>`).join('');
+  }
+  closeCustomCatModal();
+  openCustomCatModal(); // 一覧を更新して再表示
+}
+function deleteCustomCat(idx){
+  const c=CUSTOM_CATS[idx];
+  if(!c)return;
+  CUSTOM_CATS.splice(idx,1);
+  delete CAT_ICONS[c.name];
+  delete CAT_COLORS[c.name];
+  localStorage.setItem(CUSTOM_CAT_KEY,JSON.stringify(CUSTOM_CATS));
+  showToast(`🗑️「${c.name}」を削除しました`);
+  closeCustomCatModal();
+  openCustomCatModal();
+}
 
 function openIncomeEdit(){
   const cur=INCOME_OVERRIDE[CURRENT_MONTH];
