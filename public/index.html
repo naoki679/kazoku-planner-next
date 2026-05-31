@@ -4303,6 +4303,10 @@ function hideOnboarding(){
   document.body.style.touchAction = '';
 }
 function finishOnboarding(){
+  // すべての入力を確実に反映してから完了
+  obApplyFamily();
+  obApplyIncome();
+  obApplySavings();
   localStorage.setItem(OB_KEY,'1');
   localStorage.setItem(WELCOME_KEY,'1');
   hideOnboarding();
@@ -4316,6 +4320,7 @@ function checkFirstVisit(){
 
 // ── ステップ間ナビゲーション ──
 function obNext(){
+  if(OB_STEP===1) obApplyIncome(); // 年齢・配偶者をSTEP1→2でも即反映
   if(OB_STEP===2) obApplyFamily();
   if(OB_STEP===3) obApplyIncome();
   if(OB_STEP===4) obApplySavings();
