@@ -1469,48 +1469,52 @@ function renderSavingsPace(months,curInc,curExp){
     el.innerHTML=tabHtml+'<div style="font-size:.62rem;color:#94a3b8;text-align:center;padding:8px;">シミュレーター（トップページ）を開くと<br>達成率が表示されます</div>';
     return;
   }
-  // 分母：プランナーで設定した積立額（eduMonthly/retireMonthly）
+  // 老後：カード/引き落としの投資支出でカバー
+  // 教育：余剰金から現金で確保（プランナーの保険は既計上だが現金積立が必要）
   const retTarget=Math.round((sim.retireMonthly||sim.minRetire||0)*10000);
   const eduTarget=Math.round((sim.eduMonthly||sim.minEduTotal||0)*10000);
+  // 老後：投資支出 >= 設定額？
+  const retOk=retireInvest>=retTarget;
   const retGap=Math.max(0,retTarget-retireInvest);
-  const eduGap=Math.max(0,eduTarget-eduInsurance);
-  const totalGap=retGap+eduGap;
-  const isOk=totalGap===0||(surplus>=totalGap);
-  const statusColor=isOk?'#16a34a':surplus>0&&surplus>=totalGap*0.8?'#f59e0b':'#dc2626';
-  const statusMsg=totalGap===0?'✅ 支出で達成済み':isOk?'✅ 余剰金で補える':surplus<0?'❌ 収支がマイナス':`❌ 月${((totalGap-Math.max(0,surplus))/10000).toFixed(1)}万不足`;
   const retPct=retTarget>0?Math.min(100,Math.round(retireInvest/retTarget*100)):100;
-  const eduPct=eduTarget>0?Math.min(100,Math.round(eduInsurance/eduTarget*100)):100;
-  const retColor=retPct>=100?'#16a34a':retPct>=60?'#f59e0b':'#f97316';
-  const eduColor=eduPct>=100?'#16a34a':eduPct>=60?'#f59e0b':'#0284c7';
+  const retColor=retOk?'#16a34a':retPct>=60?'#f59e0b':'#f97316';
+  // 教育：余剰金 >= 設定額？
+  const eduOk=surplus>=eduTarget;
+  const eduShortfall=Math.max(0,eduTarget-surplus);
+  const eduPct=eduTarget>0?Math.min(100,Math.round(surplus/eduTarget*100)):100;
+  const eduColor=eduOk?'#16a34a':eduPct>=60?'#f59e0b':'#0284c7';
+  // 総合判定
+  const allOk=retOk&&eduOk;
+  const statusColor=allOk?'#16a34a':retOk||eduOk?'#f59e0b':'#dc2626';
+  const statusMsg=allOk?'✅ 両方クリア':retOk&&!eduOk?`🎓 教育資金 ${(eduShortfall/10000).toFixed(1)}万不足`:!retOk&&eduOk?`🌙 老後資金 ${(retGap/10000).toFixed(1)}万不足`:`❌ 老後${(retGap/10000).toFixed(1)}万・教育${(eduShortfall/10000).toFixed(1)}万不足`;
   el.innerHTML=tabHtml+`
-    <div style="display:flex;flex-direction:column;gap:5px;">
-      <div style="padding:0 2px;">
-        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:2px;">
-          <span style="font-size:.62rem;font-weight:700;color:#10b981;">🌙 老後資金</span>
-          <span style="font-size:.68rem;font-weight:800;color:${retColor};">${(retireInvest/10000).toFixed(1)}万 <span style="color:#94a3b8;font-weight:400;">/ 設定</span> ${(retTarget/10000).toFixed(1)}万</span>
+    <div style="display:flex;flex-direction:column;gap:6px;">
+      <div style="padding:4px 8px;background:#f8fafc;border-radius:8px;border-left:3px solid #10b981;">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:3px;">
+          <span style="font-size:.62rem;font-weight:700;color:#10b981;">🌙 老後資金（カード・引き落とし）</span>
+          <span style="font-size:.68rem;font-weight:900;color:${retColor};">${(retireInvest/10000).toFixed(1)}万 <span style="color:#94a3b8;font-size:.55rem;">/ 設定 ${(retTarget/10000).toFixed(1)}万</span></span>
         </div>
-        <div style="background:#e2e8f0;border-radius:3px;height:5px;overflow:hidden;margin-bottom:2px;">
+        <div style="background:#e2e8f0;border-radius:3px;height:5px;overflow:hidden;">
           <div style="height:5px;border-radius:3px;background:${retColor};width:${retPct}%;transition:width .5s;"></div>
         </div>
-        <div style="font-size:.52rem;color:var(--muted);">${retGap>0?`不足 ${(retGap/10000).toFixed(1)}万 → 余剰金から補う`:'✅ 支出でカバー済み'}</div>
+        <div style="font-size:.52rem;color:var(--muted);margin-top:2px;">${retOk?'✅ 自動積立でカバー済み':`⚠️ あと ${(retGap/10000).toFixed(1)}万 不足`}</div>
       </div>
-      <div style="padding:0 2px;">
-        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:2px;">
-          <span style="font-size:.62rem;font-weight:700;color:#0284c7;">🎓 教育資金</span>
-          <span style="font-size:.68rem;font-weight:800;color:${eduColor};">${(eduInsurance/10000).toFixed(1)}万 <span style="color:#94a3b8;font-weight:400;">/ 設定</span> ${(eduTarget/10000).toFixed(1)}万</span>
+      <div style="padding:4px 8px;background:#f8fafc;border-radius:8px;border-left:3px solid #0284c7;">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:3px;">
+          <span style="font-size:.62rem;font-weight:700;color:#0284c7;">🎓 教育資金（余剰金から現金確保）</span>
+          <span style="font-size:.68rem;font-weight:900;color:${eduColor};">${(Math.max(0,surplus)/10000).toFixed(1)}万 <span style="color:#94a3b8;font-size:.55rem;">/ 必要 ${(eduTarget/10000).toFixed(1)}万</span></span>
         </div>
-        <div style="background:#e2e8f0;border-radius:3px;height:5px;overflow:hidden;margin-bottom:2px;">
+        <div style="background:#e2e8f0;border-radius:3px;height:5px;overflow:hidden;">
           <div style="height:5px;border-radius:3px;background:${eduColor};width:${eduPct}%;transition:width .5s;"></div>
         </div>
-        <div style="font-size:.52rem;color:var(--muted);">${eduGap>0?`不足 ${(eduGap/10000).toFixed(1)}万 → 余剰金から補う`:'✅ 支出でカバー済み'}</div>
+        <div style="font-size:.52rem;color:var(--muted);margin-top:2px;">${eduOk?'✅ 余剰金で確保できます':`⚠️ 余剰金が ${(eduShortfall/10000).toFixed(1)}万 不足`}</div>
       </div>
       <div style="display:flex;justify-content:space-between;align-items:center;padding:5px 8px;background:#f8fafc;border-radius:7px;border:1px solid #e2e8f0;">
         <span style="font-size:.62rem;color:var(--muted);">今月余剰金</span>
         <span style="font-size:.75rem;font-weight:900;color:${surplus>=0?'#0891b2':'#dc2626'};">${surplus>=0?'+':''}${(surplus/10000).toFixed(1)}万</span>
       </div>
-      <div style="display:flex;justify-content:space-between;align-items:center;padding:6px 8px;background:${isOk?'#f0fdf4':'#fff7ed'};border-radius:7px;border:1.5px solid ${isOk?'#86efac':'#fed7aa'};">
-        <span style="font-size:.65rem;font-weight:800;color:${statusColor};">${statusMsg}</span>
-        ${totalGap>0?`<span style="font-size:.6rem;color:var(--muted);">補填必要 ${(totalGap/10000).toFixed(1)}万</span>`:''}
+      <div style="padding:6px 10px;background:${allOk?'#f0fdf4':'#fff7ed'};border-radius:8px;border:1.5px solid ${allOk?'#86efac':'#fed7aa'};">
+        <span style="font-size:.68rem;font-weight:800;color:${statusColor};">${statusMsg}</span>
       </div>
     </div>`;
 }
