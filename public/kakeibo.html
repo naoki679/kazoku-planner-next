@@ -1763,7 +1763,33 @@ function saveSnapshotForMonth(monthKey, silent){
 }
 
 function saveSnapshotNow(){
-  saveSnapshotForMonth(CURRENT_MONTH||new Date().toISOString().slice(0,7));
+  const snaps=getSnapshots();
+  const now=new Date();
+  const key='full_'+now.toISOString().slice(0,16).replace('T','_').replace(':','');
+  const totalExp=ALL_TXN.filter(t=>t.type==='expense').reduce((s,t)=>s+t.amount,0);
+  const totalInc=ALL_TXN.filter(t=>t.type==='income').reduce((s,t)=>s+t.amount,0);
+  snaps[key]={
+    type:'full',
+    label:`全データ保存（${now.getFullYear()}/${now.getMonth()+1}/${now.getDate()} ${String(now.getHours()).padStart(2,'0')}:${String(now.getMinutes()).padStart(2,'0')}）`,
+    savedAt:now.toISOString(),
+    summary:{inc:totalInc,exp:totalExp,savings:totalInc-totalExp},
+    kakeibo:{
+      txns:ALL_TXN,
+      cards:CARDS,
+      budgets:BUDGETS,
+      recurring:RECURRING,
+      incomeOverride:INCOME_OVERRIDE
+    },
+    lifeplan:{
+      bs:JSON.parse(localStorage.getItem('lifeplan_bs_v2')||'{}'),
+      events:JSON.parse(localStorage.getItem('lifeplan_events_v1')||'[]'),
+      family:JSON.parse(localStorage.getItem('lifeplan_family_v1')||'null'),
+      owners:JSON.parse(localStorage.getItem('lifeplan_owners_v1')||'null')
+    },
+    simulator:localStorage.getItem('lifePlanSim_private_v1')||null
+  };
+  localStorage.setItem(SNAPSHOT_KEY,JSON.stringify(snaps));
+  showToast('全データを保存しました');
   renderSnapshotList();
 }
 
@@ -1797,15 +1823,16 @@ function renderSnapshotList(){
   }
   el.innerHTML=keys.map(mk=>{
     const s=snaps[mk];
+    const isFull=s.type==='full';
     const inc=s.summary?.inc||0;
     const exp=s.summary?.exp||0;
     const sav=s.summary?.savings||0;
-    const savedDate=s.savedAt?new Date(s.savedAt).toLocaleDateString('ja-JP'):'';
-    const [y,m]=mk.split('-');
+    const savedDate=s.savedAt?new Date(s.savedAt).toLocaleString('ja-JP',{month:'numeric',day:'numeric',hour:'2-digit',minute:'2-digit'}):'';
+    const title=isFull?(s.label||'全データ保存'):(()=>{const [y,m]=mk.split('-');return`${parseInt(y)}年${parseInt(m)}月`;})();
     const txnCount=s.kakeibo?.txns?.length||0;
-    return`<div style="background:#f8fafc;border:1.5px solid #e2e8f0;border-radius:10px;padding:10px 12px;">
+    return`<div style="background:#f8fafc;border:1.5px solid ${isFull?'#818cf8':'#e2e8f0'};border-radius:10px;padding:10px 12px;">
       <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px;">
-        <span style="font-size:.78rem;font-weight:800;color:var(--navy);">${parseInt(y)}年${parseInt(m)}月</span>
+        <span style="font-size:.78rem;font-weight:800;color:var(--navy);">${isFull?'💾 ':''} ${title}</span>
         <span style="font-size:.58rem;color:#94a3b8;">${savedDate} 保存</span>
       </div>
       <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:4px;margin-bottom:6px;">
