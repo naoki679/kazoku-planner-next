@@ -1427,8 +1427,8 @@ function renderSavingsPace(months,curInc,curExp){
   if(_paceTab==='fixed'){
     const catMap={};
     ALL_TXN.filter(t=>t.monthKey===CURRENT_MONTH&&t.type==='expense').forEach(t=>{catMap[t.category]=(catMap[t.category]||0)+t.amount;});
-    const investAmt=(catMap['投資']||0)+(catMap['投資信託']||0);
-    const insuranceAmt=(catMap['保険']||0)+(catMap['学資保険']||0);
+    const investAmt=(catMap['投資信託（老後資金用）']||0)+(catMap['投資信託（教育資金用）']||0);
+    const insuranceAmt=(catMap['保険（教育資金用）']||0);
     const totalSaving=investAmt+insuranceAmt;
     // カテゴリ別の行を生成（投資・保険系のみ）
     const savingCats=[
