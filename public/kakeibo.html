@@ -451,8 +451,8 @@ const CATEGORY_RULES=[
   {cat:'日用品',icon:'🧴',keywords:['ダイソー','ﾀﾞｲｿ','100均','ニトリ','ﾆﾄﾘ','カインズ','ドン・キホーテ','東急ハンズ']},
   {cat:'ショッピング',icon:'👗',keywords:['チヨダ','阪急','ﾕﾆｸﾛ','ユニクロ','ZARA','GU','メルカリ','楽天ＳＰ']},
 ];
-const CAT_ICONS={'食費':'🛒','外食':'🍜','保険':'🛡','通信費':'📱','交通費':'🚃','移動交通費':'🚗','投資':'📈','サブスク':'🎬','医療費':'💊','日用品':'🧴','子ども費':'👶','ショッピング':'👗','その他':'💰','給与':'💼','ボーナス':'🎁','副収入':'💡','その他収入':'📦','家賃':'🏠','住宅ローン':'🏠','光熱費':'💡','固定費':'🔁'};
-const CAT_COLORS={'食費':'#16a34a','外食':'#f97316','保険':'#2563eb','通信費':'#7c3aed','交通費':'#0891b2','移動交通費':'#0369a1','投資':'#d97706','サブスク':'#db2777','医療費':'#dc2626','日用品':'#65a30d','子ども費':'#0284c7','ショッピング':'#9333ea','その他':'#64748b','給与':'#16a34a','ボーナス':'#059669','副収入':'#0d9488','その他収入':'#64748b','家賃':'#f97316','住宅ローン':'#ea580c','光熱費':'#f59e0b','固定費':'#f97316'};
+const CAT_ICONS={'食費':'🛒','外食':'🍜','保険':'🛡','学資保険':'📚','通信費':'📱','交通費':'🚃','移動交通費':'🚗','投資':'📈','投資信託':'💹','サブスク':'🎬','医療費':'💊','日用品':'🧴','子ども費':'👶','ショッピング':'👗','その他':'💰','給与':'💼','ボーナス':'🎁','副収入':'💡','その他収入':'📦','家賃':'🏠','住宅ローン':'🏠','光熱費':'💡','固定費':'🔁'};
+const CAT_COLORS={'食費':'#16a34a','外食':'#f97316','保険':'#2563eb','学資保険':'#0ea5e9','通信費':'#7c3aed','交通費':'#0891b2','移動交通費':'#0369a1','投資':'#d97706','投資信託':'#f59e0b','サブスク':'#db2777','医療費':'#dc2626','日用品':'#65a30d','子ども費':'#0284c7','ショッピング':'#9333ea','その他':'#64748b','給与':'#16a34a','ボーナス':'#059669','副収入':'#0d9488','その他収入':'#64748b','家賃':'#f97316','住宅ローン':'#ea580c','光熱費':'#f59e0b','固定費':'#f97316'};
 const CARD_PALETTE=['#1a2b4a','#2563eb','#7c3aed','#db2777','#dc2626','#f97316','#16a34a','#0891b2'];
 
 // ============================================================
@@ -1413,45 +1413,102 @@ function getEffectiveIncForMonth(mk){
   if(idxInc&&idxInc.total>0) return Math.round(idxInc.total*10000)+recInc;
   return recInc;
 }
+let _paceTab='alloc'; // 'alloc' | 'fixed'
 function renderSavingsPace(months,curInc,curExp){
   const el=document.getElementById('savings-pace');
   if(!el)return;
-  // シミュレーターサマリーを読み込み
   let sim=null;
   try{sim=JSON.parse(localStorage.getItem('kazoku_sim_summary_v1')||'null');}catch(e){}
-  if(!sim){
-    el.innerHTML='<div style="font-size:.65rem;color:#94a3b8;text-align:center;padding:8px;">シミュレーター（トップページ）を開くと<br>達成率が表示されます</div>';
+  // タブUI
+  const tabHtml=`<div style="display:flex;gap:4px;margin-bottom:8px;">
+    <button onclick="_paceTab='alloc';renderSavingsPace([],${curInc},${curExp})" style="flex:1;padding:4px 0;font-size:.62rem;font-weight:700;border-radius:6px;border:1.5px solid ${_paceTab==='alloc'?'var(--navy)':'#e2e8f0'};background:${_paceTab==='alloc'?'var(--navy)':'#f8fafc'};color:${_paceTab==='alloc'?'#fff':'#475569'};cursor:pointer;">💰 積立配分</button>
+    <button onclick="_paceTab='fixed';renderSavingsPace([],${curInc},${curExp})" style="flex:1;padding:4px 0;font-size:.62rem;font-weight:700;border-radius:6px;border:1.5px solid ${_paceTab==='fixed'?'var(--navy)':'#e2e8f0'};background:${_paceTab==='fixed'?'var(--navy)':'#f8fafc'};color:${_paceTab==='fixed'?'#fff':'#475569'};cursor:pointer;">💳 クレジット・保険</button>
+  </div>`;
+  if(_paceTab==='fixed'){
+    const catMap={};
+    ALL_TXN.filter(t=>t.monthKey===CURRENT_MONTH&&t.type==='expense').forEach(t=>{catMap[t.category]=(catMap[t.category]||0)+t.amount;});
+    const investAmt=(catMap['投資']||0)+(catMap['投資信託']||0);
+    const insuranceAmt=(catMap['保険']||0)+(catMap['学資保険']||0);
+    const totalSaving=investAmt+insuranceAmt;
+    // カテゴリ別の行を生成（投資・保険系のみ）
+    const savingCats=[
+      {key:'投資信託',icon:'💹',color:'#f59e0b'},{key:'投資',icon:'📈',color:'#d97706'},
+      {key:'学資保険',icon:'📚',color:'#0ea5e9'},{key:'保険',icon:'🛡',color:'#2563eb'}
+    ].filter(c=>catMap[c.key]>0);
+    el.innerHTML=tabHtml+`
+      <div style="display:flex;flex-direction:column;gap:4px;">
+        <div style="font-size:.6rem;color:var(--muted);margin-bottom:2px;">💡 カテゴリ「投資・保険」の支出が積立として扱われます</div>
+        ${savingCats.map(c=>`
+          <div style="display:flex;justify-content:space-between;align-items:center;padding:5px 8px;background:#f8fafc;border-radius:7px;border-left:3px solid ${c.color};">
+            <span style="font-size:.65rem;font-weight:700;">${c.icon} ${c.key}</span>
+            <span style="font-size:.72rem;font-weight:800;color:${c.color};">${(catMap[c.key]/10000).toFixed(1)}万</span>
+          </div>`).join('')}
+        ${savingCats.length===0?'<div style="font-size:.62rem;color:#94a3b8;text-align:center;padding:8px;">投資・保険カテゴリの支出がありません<br>CSVや手動入力でカテゴリを設定してください</div>':''}
+        <div style="display:flex;justify-content:space-between;align-items:center;padding:6px 8px;background:#fef9f0;border-radius:7px;border:1.5px solid #fed7aa;margin-top:2px;">
+          <span style="font-size:.65rem;font-weight:800;color:#92400e;">今月の積立合計</span>
+          <span style="font-size:.78rem;font-weight:900;color:#b45309;">${(totalSaving/10000).toFixed(1)}万</span>
+        </div>
+      </div>`;
     return;
   }
-  const eduPct=sim.eduPct||0;
-  const retirePct=sim.retirePct||0;
-  const eduColor=eduPct>=100?'#16a34a':eduPct>=80?'#f59e0b':eduPct>=60?'#f97316':'#dc2626';
-  const retColor=retirePct>=100?'#16a34a':retirePct>=80?'#f59e0b':retirePct>=60?'#f97316':'#dc2626';
-  el.innerHTML=`
-    <div style="font-size:.65rem;font-weight:800;color:var(--muted);margin-bottom:8px;letter-spacing:.04em;">🎯 資金達成率（シミュレーター連動）</div>
-    <div style="display:flex;flex-direction:column;gap:8px;">
-      <div>
-        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:3px;">
-          <span style="font-size:.65rem;font-weight:700;color:#0284c7;">🎓 教育資金</span>
-          <span style="font-size:.82rem;font-weight:900;color:${eduColor};">${eduPct}%</span>
+  // 積立配分タブ
+  // 今月の「積立・投資系支出」をカテゴリで抽出（カード払い・引き落とし問わず）
+  const INVEST_CATS=['投資','投資信託']; // 老後資金向け
+  const EDU_CATS=['保険','学資保険'];    // 教育資金向け（学資保険）
+  const monthExp=ALL_TXN.filter(t=>t.monthKey===CURRENT_MONTH&&t.type==='expense');
+  const retireInvest=monthExp.filter(t=>INVEST_CATS.includes(t.category)).reduce((s,t)=>s+t.amount,0);
+  const eduInsurance=monthExp.filter(t=>EDU_CATS.includes(t.category)).reduce((s,t)=>s+t.amount,0);
+  const surplus=curInc-curExp;
+  if(!sim){
+    el.innerHTML=tabHtml+'<div style="font-size:.62rem;color:#94a3b8;text-align:center;padding:8px;">シミュレーター（トップページ）を開くと<br>達成率が表示されます</div>';
+    return;
+  }
+  const eduNeed=Math.round((sim.minEduTotal||0)*10000);
+  const retNeed=Math.round((sim.minRetire||0)*10000);
+  // 支出の投資・保険がどれだけ目標をカバーしているか
+  const retCover=Math.min(retNeed,retireInvest); // 老後：投資支出でカバー分
+  const eduCover=Math.min(eduNeed,eduInsurance); // 教育：保険支出でカバー分
+  const retGap=Math.max(0,retNeed-retireInvest); // 老後：まだ不足（余剰金で補う必要）
+  const eduGap=Math.max(0,eduNeed-eduInsurance); // 教育：まだ不足
+  const totalGap=retGap+eduGap;
+  const isOk=totalGap===0||(surplus>=totalGap);
+  const statusColor=isOk?'#16a34a':surplus>0&&surplus>=totalGap*0.8?'#f59e0b':'#dc2626';
+  const statusMsg=totalGap===0?'✅ 支出で達成済み':isOk?'✅ 余剰金で補える':surplus<0?'❌ 収支がマイナス':`❌ 月${((totalGap-Math.max(0,surplus))/10000).toFixed(1)}万不足`;
+  const retPct=retNeed>0?Math.min(100,Math.round(retireInvest/retNeed*100)):100;
+  const eduPct=eduNeed>0?Math.min(100,Math.round(eduInsurance/eduNeed*100)):100;
+  const retColor=retPct>=100?'#16a34a':retPct>=60?'#f59e0b':'#f97316';
+  const eduColor=eduPct>=100?'#16a34a':eduPct>=60?'#f59e0b':'#0284c7';
+  el.innerHTML=tabHtml+`
+    <div style="display:flex;flex-direction:column;gap:5px;">
+      <div style="padding:0 2px;">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:2px;">
+          <span style="font-size:.62rem;font-weight:700;color:#10b981;">🌙 老後資金（投資・投資信託）</span>
+          <span style="font-size:.65rem;font-weight:800;color:${retColor};">${(retireInvest/10000).toFixed(1)}万 / ${(retNeed/10000).toFixed(1)}万</span>
         </div>
-        <div style="background:#e2e8f0;border-radius:4px;height:7px;overflow:hidden;">
-          <div style="height:7px;border-radius:4px;background:${eduColor};width:${Math.min(100,eduPct)}%;transition:width .6s;"></div>
+        <div style="background:#e2e8f0;border-radius:3px;height:5px;overflow:hidden;margin-bottom:2px;">
+          <div style="height:5px;border-radius:3px;background:${retColor};width:${retPct}%;transition:width .5s;"></div>
         </div>
-        <div style="font-size:.55rem;color:var(--muted);margin-top:2px;">月${sim.eduMonthly||0}万 ／ 必要${sim.minEduTotal?Math.ceil(sim.minEduTotal*10)/10:'-'}万</div>
+        <div style="font-size:.52rem;color:var(--muted);">${retGap>0?`不足 ${(retGap/10000).toFixed(1)}万 → 余剰金から補う`:'✅ 支出でカバー済み'}</div>
       </div>
-      <div>
-        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:3px;">
-          <span style="font-size:.65rem;font-weight:700;color:#10b981;">🌙 老後資金</span>
-          <span style="font-size:.82rem;font-weight:900;color:${retColor};">${retirePct}%</span>
+      <div style="padding:0 2px;">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:2px;">
+          <span style="font-size:.62rem;font-weight:700;color:#0284c7;">🎓 教育資金（保険・学資保険）</span>
+          <span style="font-size:.65rem;font-weight:800;color:${eduColor};">${(eduInsurance/10000).toFixed(1)}万 / ${(eduNeed/10000).toFixed(1)}万</span>
         </div>
-        <div style="background:#e2e8f0;border-radius:4px;height:7px;overflow:hidden;">
-          <div style="height:7px;border-radius:4px;background:${retColor};width:${Math.min(100,retirePct)}%;transition:width .6s;"></div>
+        <div style="background:#e2e8f0;border-radius:3px;height:5px;overflow:hidden;margin-bottom:2px;">
+          <div style="height:5px;border-radius:3px;background:${eduColor};width:${eduPct}%;transition:width .5s;"></div>
         </div>
-        <div style="font-size:.55rem;color:var(--muted);margin-top:2px;">現在${sim.retireCurrent||0}万 ／ 目標${sim.retireTarget||2000}万（65歳時）</div>
+        <div style="font-size:.52rem;color:var(--muted);">${eduGap>0?`不足 ${(eduGap/10000).toFixed(1)}万 → 余剰金から補う`:'✅ 支出でカバー済み'}</div>
       </div>
-    </div>
-  `;
+      <div style="display:flex;justify-content:space-between;align-items:center;padding:5px 8px;background:#f8fafc;border-radius:7px;border:1px solid #e2e8f0;">
+        <span style="font-size:.62rem;color:var(--muted);">今月余剰金</span>
+        <span style="font-size:.75rem;font-weight:900;color:${surplus>=0?'#0891b2':'#dc2626'};">${surplus>=0?'+':''}${(surplus/10000).toFixed(1)}万</span>
+      </div>
+      <div style="display:flex;justify-content:space-between;align-items:center;padding:6px 8px;background:${isOk?'#f0fdf4':'#fff7ed'};border-radius:7px;border:1.5px solid ${isOk?'#86efac':'#fed7aa'};">
+        <span style="font-size:.65rem;font-weight:800;color:${statusColor};">${statusMsg}</span>
+        ${totalGap>0?`<span style="font-size:.6rem;color:var(--muted);">補填必要 ${(totalGap/10000).toFixed(1)}万</span>`:''}
+      </div>
+    </div>`;
 }
 function renderBarChart(months){
   const data=months.slice(0,6).reverse().map(mk=>{
