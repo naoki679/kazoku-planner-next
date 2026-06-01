@@ -188,13 +188,15 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
         <div id="pie-chart" style="display:flex;justify-content:center;"></div>
         <div id="pie-legend" style="margin-top:8px;display:flex;flex-direction:column;gap:3px;"></div>
       </div>
-      <div class="chart-card">
+      <div class="chart-card" style="display:flex;flex-direction:column;">
         <div class="section-title">📈 月別 収入・支出</div>
         <div id="bar-chart" style="display:flex;align-items:flex-end;gap:5px;height:100px;margin-top:4px;"></div>
         <div id="bar-legend" style="display:flex;gap:12px;margin-top:8px;justify-content:center;font-size:.62rem;color:var(--muted);">
           <span><span style="display:inline-block;width:10px;height:10px;border-radius:2px;background:#3b82f6;margin-right:4px;"></span>収入</span>
           <span><span style="display:inline-block;width:10px;height:10px;border-radius:2px;background:#f97316;margin-right:4px;"></span>支出</span>
         </div>
+        <!-- 貯蓄ペース指標 -->
+        <div id="savings-pace" style="margin-top:12px;padding:10px 12px;background:#f8fafc;border-radius:10px;border:1.5px solid #e2e8f0;flex:1;"></div>
       </div>
     </div>
 
@@ -1217,6 +1219,7 @@ function render(){
   renderSavingsBanner(effectiveInc,totalExp,'savings-banner');
   renderPie(exp);
   renderBarChart(months);
+  renderSavingsPace(months,effectiveInc,totalExp);
   renderCategories(exp,totalExp);
   renderCalendar();
   renderDetail([...inc,...exp].sort((a,b)=>b.date.localeCompare(a.date)));
@@ -1404,6 +1407,47 @@ function getEffectiveIncForMonth(mk){
   const recInc=ALL_TXN.filter(t=>t.monthKey===mk&&t.type==='income').reduce((s,t)=>s+t.amount,0);
   if(idxInc&&idxInc.total>0) return Math.round(idxInc.total*10000)+recInc;
   return recInc;
+}
+function renderSavingsPace(months,curInc,curExp){
+  const el=document.getElementById('savings-pace');
+  if(!el)return;
+  // 今年の集計
+  const yr=CURRENT_MONTH?CURRENT_MONTH.split('-')[0]:new Date().getFullYear()+'';
+  const yearMonths=months.filter(mk=>mk.startsWith(yr));
+  let yearInc=0,yearExp=0;
+  yearMonths.forEach(mk=>{
+    yearInc+=getEffectiveIncForMonth(mk);
+    yearExp+=ALL_TXN.filter(t=>t.monthKey===mk&&t.type==='expense').reduce((s,t)=>s+t.amount,0);
+  });
+  const yearSav=yearInc-yearExp;
+  // 月平均貯蓄
+  const mCount=yearMonths.length||1;
+  const avgSav=Math.round(yearSav/mCount);
+  // 年間ペース（12ヶ月換算）
+  const annualPace=avgSav*12;
+  // 貯蓄率（今月）
+  const rate=curInc>0?Math.round((curInc-curExp)/curInc*100):0;
+  const rateColor=rate>=20?'#16a34a':rate>=10?'#f59e0b':rate>=0?'#f97316':'#dc2626';
+  const paceColor=annualPace>=0?'#0891b2':'#dc2626';
+  el.innerHTML=`
+    <div style="font-size:.65rem;font-weight:800;color:var(--muted);margin-bottom:8px;letter-spacing:.04em;">💰 貯蓄ペース指標</div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-bottom:8px;">
+      <div style="text-align:center;">
+        <div style="font-size:.55rem;color:var(--muted);margin-bottom:2px;">今月の貯蓄率</div>
+        <div style="font-size:1.2rem;font-weight:900;color:${rateColor};">${rate}%</div>
+        <div style="font-size:.52rem;color:var(--muted);">目標 20%</div>
+      </div>
+      <div style="text-align:center;">
+        <div style="font-size:.55rem;color:var(--muted);margin-bottom:2px;">年間換算ペース</div>
+        <div style="font-size:1.1rem;font-weight:900;color:${paceColor};">${annualPace>=0?'+':''}${(annualPace/10000).toFixed(1)}万</div>
+        <div style="font-size:.52rem;color:var(--muted);">月平均 ${avgSav>=0?'+':''}${(avgSav/10000).toFixed(1)}万</div>
+      </div>
+    </div>
+    <div style="background:#e2e8f0;border-radius:4px;height:6px;overflow:hidden;">
+      <div style="height:6px;border-radius:4px;background:${rateColor};width:${Math.min(100,Math.max(0,rate))}%;transition:width .6s;"></div>
+    </div>
+    <div style="display:flex;justify-content:space-between;font-size:.52rem;color:var(--muted);margin-top:2px;"><span>0%</span><span style="color:#f59e0b;">10%</span><span style="color:#16a34a;">20%+</span></div>
+  `;
 }
 function renderBarChart(months){
   const data=months.slice(0,6).reverse().map(mk=>{
