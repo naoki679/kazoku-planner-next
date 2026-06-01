@@ -101,6 +101,11 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 .savings-neg{background:linear-gradient(135deg,#fee2e2,#fecaca);border-color:#fca5a5;}
 @keyframes fadeUp{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
 .animate-in{animation:fadeUp .25s ease both;}
+@keyframes barSlideIn{from{opacity:0;transform:translateX(24px)}to{opacity:1;transform:translateX(0)}}
+@keyframes barSlideOut{from{opacity:1;transform:translateX(0)}to{opacity:0;transform:translateX(-24px)}}
+.bar-col-in{animation:barSlideIn .28s ease both;}
+.bar-col-out{animation:barSlideOut .18s ease both;}
+#bar-chart{overflow:hidden;}
 </style>
 </head>
 <body>
@@ -1456,16 +1461,22 @@ function renderBarChart(months){
     return{label:`${parseInt(m)}月`,exp,inc,savings:inc-exp,active:mk===CURRENT_MONTH};
   });
   const maxVal=Math.max(...data.map(d=>Math.max(d.exp,d.inc)),1);
-  document.getElementById('bar-chart').innerHTML=data.map(d=>`
-    <div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:2px;">
+  const barEl=document.getElementById('bar-chart');
+  // 前回の月キー一覧と比較してアニメーション方向を決定
+  const prevKeys=(barEl.dataset.keys||'').split(',').filter(Boolean);
+  const curKeys=data.map(d=>d.label);
+  const isForward=prevKeys.length===0||prevKeys[prevKeys.length-1]!==curKeys[curKeys.length-1];
+  barEl.dataset.keys=curKeys.join(',');
+  barEl.innerHTML=data.map((d,i)=>`
+    <div class="bar-col-in" style="flex:1;display:flex;flex-direction:column;align-items:center;gap:2px;animation-delay:${i*0.04}s;">
       <div style="width:100%;display:flex;gap:3px;align-items:flex-end;height:100px;">
         <div style="flex:1;display:flex;flex-direction:column;align-items:center;justify-content:flex-end;gap:1px;">
           <div style="font-size:.52rem;font-weight:700;color:#3b82f6;white-space:nowrap;">${d.inc?((d.inc/10000).toFixed(1))+'万':''}</div>
-          <div style="width:100%;background:#3b82f6${d.active?'':'80'};height:${Math.max(3,Math.round(d.inc/maxVal*76))}px;border-radius:3px 3px 0 0;"></div>
+          <div style="width:100%;background:#3b82f6${d.active?'':'80'};height:${Math.max(3,Math.round(d.inc/maxVal*76))}px;border-radius:3px 3px 0 0;transition:height .4s ease;"></div>
         </div>
         <div style="flex:1;display:flex;flex-direction:column;align-items:center;justify-content:flex-end;gap:1px;">
           <div style="font-size:.52rem;font-weight:700;color:#f97316;white-space:nowrap;">${d.exp?((d.exp/10000).toFixed(1))+'万':''}</div>
-          <div style="width:100%;background:#f97316${d.active?'':'80'};height:${Math.max(3,Math.round(d.exp/maxVal*76))}px;border-radius:3px 3px 0 0;"></div>
+          <div style="width:100%;background:#f97316${d.active?'':'80'};height:${Math.max(3,Math.round(d.exp/maxVal*76))}px;border-radius:3px 3px 0 0;transition:height .4s ease;"></div>
         </div>
       </div>
       <div style="font-size:.58rem;font-weight:${d.active?'800':'400'};color:${d.active?'var(--navy)':'var(--muted)'};">${d.label}</div>
