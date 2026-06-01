@@ -3719,8 +3719,7 @@ function runAIDiagnosis(){
       icon:'📈', title:'つみたてNISA・iDeCoで節税しながら増やす',
       body: `毎月の積立を投資に回すと運用益が非課税に。${!retireOk ? '老後資金の不足'+retShort.toFixed(1)+'万円/月を補う手段として有効です。' : ''}`,
       links:[
-        { label:'三菱UFJ eスマート証券で口座開設（無料）', url:'#mitsubishi-esmrt', color:'#dc2626' },
-        { label:'GMOクリック証券で口座開設（無料）', url:'#gmo-click', color:'#0ea5e9' },
+        { label:'手数料無料！松井証券のNISA', url:'https://px.a8.net/svt/ejp?a8mat=455HNM+4HCHPU+3XCC+69HAA', color:'#c0392b', affiliate: true },
       ]
     });
   }
@@ -3729,8 +3728,7 @@ function runAIDiagnosis(){
       icon:'🏦', title:'iDeCo（個人型確定拠出年金）で老後資金を節税強化',
       body:`年齢${age}歳からでも間に合います。掛金が全額所得控除になるため、老後不足${retShort.toFixed(1)}万円/月の補填に効果的です。`,
       links:[
-        { label:'三菱UFJ eスマート証券でiDeCo開設（無料）', url:'#mitsubishi-ideco', color:'#dc2626' },
-        { label:'GMOクリック証券でiDeCo開設（無料）', url:'#gmo-ideco', color:'#0ea5e9' },
+        { label:'手数料無料！松井証券のNISA', url:'https://px.a8.net/svt/ejp?a8mat=455HNM+4HCHPU+3XCC+69HAA', color:'#c0392b', affiliate: true },
       ]
     });
   }
@@ -3820,7 +3818,7 @@ function runAIDiagnosis(){
         <div style="font-size:.8rem;font-weight:800;color:#1a2b4a;margin-bottom:5px;">${a.icon} ${a.title}</div>
         <div style="font-size:.72rem;color:#475569;line-height:1.6;margin-bottom:10px;">${a.body}</div>
         <div style="display:flex;flex-wrap:wrap;gap:7px;">
-          ${a.links.map(l=>`<a href="${l.url}" target="_blank" rel="noopener" style="display:inline-block;padding:7px 14px;background:${l.color};color:#fff;border-radius:8px;font-size:.72rem;font-weight:700;text-decoration:none;touch-action:manipulation;">${l.label} →</a>`).join('')}
+          ${a.links.map(l=>`<a href="${l.url}" target="_blank" rel="nofollow noopener" style="display:inline-block;padding:7px 14px;background:${l.color};color:#fff;border-radius:8px;font-size:.72rem;font-weight:700;text-decoration:none;touch-action:manipulation;">${l.label} →</a>${l.affiliate?'<img border="0" width="1" height="1" src="https://www15.a8.net/0.gif?a8mat=455HNM+4HCHPU+3XCC+69HAA" alt="">':''}`).join('')}
         </div>
       </div>`).join('')}
 
