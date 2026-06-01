@@ -1413,46 +1413,15 @@ function getEffectiveIncForMonth(mk){
   if(idxInc&&idxInc.total>0) return Math.round(idxInc.total*10000)+recInc;
   return recInc;
 }
-let _paceTab='alloc'; // 'alloc' | 'fixed'
+
 function renderSavingsPace(months,curInc,curExp){
   const el=document.getElementById('savings-pace');
   if(!el)return;
   let sim=null;
   try{sim=JSON.parse(localStorage.getItem('kazoku_sim_summary_v1')||'null');}catch(e){}
   // タブUI
-  const tabHtml=`<div style="display:flex;gap:4px;margin-bottom:8px;">
-    <button onclick="_paceTab='alloc';renderSavingsPace([],${curInc},${curExp})" style="flex:1;padding:4px 0;font-size:.62rem;font-weight:700;border-radius:6px;border:1.5px solid ${_paceTab==='alloc'?'var(--navy)':'#e2e8f0'};background:${_paceTab==='alloc'?'var(--navy)':'#f8fafc'};color:${_paceTab==='alloc'?'#fff':'#475569'};cursor:pointer;">💰 積立配分</button>
-    <button onclick="_paceTab='fixed';renderSavingsPace([],${curInc},${curExp})" style="flex:1;padding:4px 0;font-size:.62rem;font-weight:700;border-radius:6px;border:1.5px solid ${_paceTab==='fixed'?'var(--navy)':'#e2e8f0'};background:${_paceTab==='fixed'?'var(--navy)':'#f8fafc'};color:${_paceTab==='fixed'?'#fff':'#475569'};cursor:pointer;">💳 クレジット・保険</button>
-  </div>`;
-  if(_paceTab==='fixed'){
-    const catMap={};
-    ALL_TXN.filter(t=>t.monthKey===CURRENT_MONTH&&t.type==='expense').forEach(t=>{catMap[t.category]=(catMap[t.category]||0)+t.amount;});
-    const investAmt=(catMap['投資信託（老後資金用）']||0)+(catMap['投資信託（教育資金用）']||0);
-    const insuranceAmt=(catMap['保険（教育資金用）']||0);
-    const totalSaving=investAmt+insuranceAmt;
-    // カテゴリ別の行を生成（投資・保険系のみ）
-    const savingCats=[
-      {key:'投資信託（老後資金用）',icon:'🌙',color:'#10b981',goal:'老後'},
-      {key:'投資信託（教育資金用）',icon:'🎓',color:'#0284c7',goal:'教育'},
-      {key:'保険（教育資金用）',icon:'📚',color:'#0ea5e9',goal:'教育'},
+  const tabHtml=``;
 
-    ].filter(c=>catMap[c.key]>0);
-    el.innerHTML=tabHtml+`
-      <div style="display:flex;flex-direction:column;gap:4px;">
-        <div style="font-size:.6rem;color:var(--muted);margin-bottom:2px;">💡 カテゴリ「投資・保険」の支出が積立として扱われます</div>
-        ${savingCats.map(c=>`
-          <div style="display:flex;justify-content:space-between;align-items:center;padding:5px 8px;background:#f8fafc;border-radius:7px;border-left:3px solid ${c.color};">
-            <span style="font-size:.65rem;font-weight:700;">${c.icon} ${c.key}${c.goal?` <span style="font-size:.5rem;padding:1px 5px;border-radius:10px;background:${c.goal==='老後'?'#d1fae5':'#dbeafe'};color:${c.goal==='老後'?'#065f46':'#1e40af'};font-weight:800;">${c.goal}用</span>`:''}</span>
-            <span style="font-size:.72rem;font-weight:800;color:${c.color};">${(catMap[c.key]/10000).toFixed(1)}万</span>
-          </div>`).join('')}
-        ${savingCats.length===0?'<div style="font-size:.62rem;color:#94a3b8;text-align:center;padding:8px;">投資・保険カテゴリの支出がありません<br>CSVや手動入力でカテゴリを設定してください</div>':''}
-        <div style="display:flex;justify-content:space-between;align-items:center;padding:6px 8px;background:#fef9f0;border-radius:7px;border:1.5px solid #fed7aa;margin-top:2px;">
-          <span style="font-size:.65rem;font-weight:800;color:#92400e;">今月の積立合計</span>
-          <span style="font-size:.78rem;font-weight:900;color:#b45309;">${(totalSaving/10000).toFixed(1)}万</span>
-        </div>
-      </div>`;
-    return;
-  }
   // 積立配分タブ
   // 今月の「積立・投資系支出」をカテゴリで抽出（カード払い・引き落とし問わず）
   // 専用カテゴリ（このアプリの主要目標）
@@ -1491,18 +1460,18 @@ function renderSavingsPace(months,curInc,curExp){
     <div style="display:flex;flex-direction:column;gap:6px;">
       <div style="padding:4px 8px;background:#f8fafc;border-radius:8px;border-left:3px solid #10b981;">
         <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:3px;">
-          <span style="font-size:.62rem;font-weight:700;color:#10b981;">🌙 老後資金（カード・引き落とし）</span>
-          <span style="font-size:.68rem;font-weight:900;color:${retColor};">${(retireInvest/10000).toFixed(1)}万 <span style="color:#94a3b8;font-size:.55rem;">/ 設定 ${(retTarget/10000).toFixed(1)}万</span></span>
+          <span style="font-size:.62rem;font-weight:700;color:#10b981;">🌙 老後資金</span>
+          <span style="font-size:.72rem;font-weight:900;color:${retColor};">${retOk?`✅ ${(retTarget/10000).toFixed(1)}万`:`${(retireInvest/10000).toFixed(1)}万`} <span style="color:#94a3b8;font-size:.55rem;">/ 設定 ${(retTarget/10000).toFixed(1)}万</span></span>
         </div>
         <div style="background:#e2e8f0;border-radius:3px;height:5px;overflow:hidden;">
           <div style="height:5px;border-radius:3px;background:${retColor};width:${retPct}%;transition:width .5s;"></div>
         </div>
-        <div style="font-size:.52rem;color:var(--muted);margin-top:2px;">${retOk?'✅ 自動積立でカバー済み':`⚠️ あと ${(retGap/10000).toFixed(1)}万 不足`}</div>
+        <div style="font-size:.52rem;color:var(--muted);margin-top:2px;">${retireInvest===0?'💡 投資信託（老後資金用）カテゴリを選択するとカード・引き落としで判断できます':retOk?'✅ カード・引き落としでカバー済み':`⚠️ あと ${(retGap/10000).toFixed(1)}万 不足`}</div>
       </div>
       <div style="padding:4px 8px;background:#f8fafc;border-radius:8px;border-left:3px solid #0284c7;">
         <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:3px;">
-          <span style="font-size:.62rem;font-weight:700;color:#0284c7;">🎓 教育資金（余剰金から現金確保）</span>
-          <span style="font-size:.68rem;font-weight:900;color:${eduColor};">${(Math.max(0,surplus)/10000).toFixed(1)}万 <span style="color:#94a3b8;font-size:.55rem;">/ 必要 ${(eduTarget/10000).toFixed(1)}万</span></span>
+          <span style="font-size:.62rem;font-weight:700;color:#0284c7;">🎓 教育資金（余剰金から確保）</span>
+          <span style="font-size:.72rem;font-weight:900;color:${eduColor};">${eduOk?`✅ ${(eduTarget/10000).toFixed(1)}万`:`${(Math.max(0,surplus)/10000).toFixed(1)}万`} <span style="color:#94a3b8;font-size:.55rem;">/ 必要 ${(eduTarget/10000).toFixed(1)}万</span></span>
         </div>
         <div style="background:#e2e8f0;border-radius:3px;height:5px;overflow:hidden;">
           <div style="height:5px;border-radius:3px;background:${eduColor};width:${eduPct}%;transition:width .5s;"></div>
