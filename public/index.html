@@ -2062,6 +2062,22 @@ function recalc(){
   const rb = document.getElementById('badge-retire-status');
   rb.textContent = rs.tx; rb.style.background = rs.bg; rb.style.color = rs.cl;
 
+  // シミュレーターサマリーをlocalStorageに保存（kakeibo.htmlから参照用）
+  const eduPct = minEduTotal > 0 ? Math.min(100, Math.round(eduMonthly / minEduTotal * 100)) : 100;
+  try {
+    localStorage.setItem('kazoku_sim_summary_v1', JSON.stringify({
+      updatedAt: new Date().toISOString(),
+      retirePct: retirePct65,
+      retireCurrent: RETIRE_CURRENT,
+      retireTarget,
+      eduPct,
+      eduMonthly,
+      minEduTotal,
+      retireMonthly,
+      minRetire
+    }));
+  } catch(e){}
+
   // Summary banner
   const banner=document.getElementById('goal-banner');
   const eduOk = totalEduGap<=0;

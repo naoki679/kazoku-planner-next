@@ -1411,42 +1411,41 @@ function getEffectiveIncForMonth(mk){
 function renderSavingsPace(months,curInc,curExp){
   const el=document.getElementById('savings-pace');
   if(!el)return;
-  // 今年の集計
-  const yr=CURRENT_MONTH?CURRENT_MONTH.split('-')[0]:new Date().getFullYear()+'';
-  const yearMonths=months.filter(mk=>mk.startsWith(yr));
-  let yearInc=0,yearExp=0;
-  yearMonths.forEach(mk=>{
-    yearInc+=getEffectiveIncForMonth(mk);
-    yearExp+=ALL_TXN.filter(t=>t.monthKey===mk&&t.type==='expense').reduce((s,t)=>s+t.amount,0);
-  });
-  const yearSav=yearInc-yearExp;
-  // 月平均貯蓄
-  const mCount=yearMonths.length||1;
-  const avgSav=Math.round(yearSav/mCount);
-  // 年間ペース（12ヶ月換算）
-  const annualPace=avgSav*12;
-  // 貯蓄率（今月）
-  const rate=curInc>0?Math.round((curInc-curExp)/curInc*100):0;
-  const rateColor=rate>=20?'#16a34a':rate>=10?'#f59e0b':rate>=0?'#f97316':'#dc2626';
-  const paceColor=annualPace>=0?'#0891b2':'#dc2626';
+  // シミュレーターサマリーを読み込み
+  let sim=null;
+  try{sim=JSON.parse(localStorage.getItem('kazoku_sim_summary_v1')||'null');}catch(e){}
+  if(!sim){
+    el.innerHTML='<div style="font-size:.65rem;color:#94a3b8;text-align:center;padding:8px;">シミュレーター（トップページ）を開くと<br>達成率が表示されます</div>';
+    return;
+  }
+  const eduPct=sim.eduPct||0;
+  const retirePct=sim.retirePct||0;
+  const eduColor=eduPct>=100?'#16a34a':eduPct>=80?'#f59e0b':eduPct>=60?'#f97316':'#dc2626';
+  const retColor=retirePct>=100?'#16a34a':retirePct>=80?'#f59e0b':retirePct>=60?'#f97316':'#dc2626';
   el.innerHTML=`
-    <div style="font-size:.65rem;font-weight:800;color:var(--muted);margin-bottom:8px;letter-spacing:.04em;">💰 貯蓄ペース指標</div>
-    <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-bottom:8px;">
-      <div style="text-align:center;">
-        <div style="font-size:.55rem;color:var(--muted);margin-bottom:2px;">今月の貯蓄率</div>
-        <div style="font-size:1.2rem;font-weight:900;color:${rateColor};">${rate}%</div>
-        <div style="font-size:.52rem;color:var(--muted);">目標 20%</div>
+    <div style="font-size:.65rem;font-weight:800;color:var(--muted);margin-bottom:8px;letter-spacing:.04em;">🎯 資金達成率（シミュレーター連動）</div>
+    <div style="display:flex;flex-direction:column;gap:8px;">
+      <div>
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:3px;">
+          <span style="font-size:.65rem;font-weight:700;color:#0284c7;">🎓 教育資金</span>
+          <span style="font-size:.82rem;font-weight:900;color:${eduColor};">${eduPct}%</span>
+        </div>
+        <div style="background:#e2e8f0;border-radius:4px;height:7px;overflow:hidden;">
+          <div style="height:7px;border-radius:4px;background:${eduColor};width:${Math.min(100,eduPct)}%;transition:width .6s;"></div>
+        </div>
+        <div style="font-size:.55rem;color:var(--muted);margin-top:2px;">月${sim.eduMonthly||0}万 ／ 必要${sim.minEduTotal?Math.ceil(sim.minEduTotal*10)/10:'-'}万</div>
       </div>
-      <div style="text-align:center;">
-        <div style="font-size:.55rem;color:var(--muted);margin-bottom:2px;">年間換算ペース</div>
-        <div style="font-size:1.1rem;font-weight:900;color:${paceColor};">${annualPace>=0?'+':''}${(annualPace/10000).toFixed(1)}万</div>
-        <div style="font-size:.52rem;color:var(--muted);">月平均 ${avgSav>=0?'+':''}${(avgSav/10000).toFixed(1)}万</div>
+      <div>
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:3px;">
+          <span style="font-size:.65rem;font-weight:700;color:#10b981;">🌙 老後資金</span>
+          <span style="font-size:.82rem;font-weight:900;color:${retColor};">${retirePct}%</span>
+        </div>
+        <div style="background:#e2e8f0;border-radius:4px;height:7px;overflow:hidden;">
+          <div style="height:7px;border-radius:4px;background:${retColor};width:${Math.min(100,retirePct)}%;transition:width .6s;"></div>
+        </div>
+        <div style="font-size:.55rem;color:var(--muted);margin-top:2px;">現在${sim.retireCurrent||0}万 ／ 目標${sim.retireTarget||2000}万（65歳時）</div>
       </div>
     </div>
-    <div style="background:#e2e8f0;border-radius:4px;height:6px;overflow:hidden;">
-      <div style="height:6px;border-radius:4px;background:${rateColor};width:${Math.min(100,Math.max(0,rate))}%;transition:width .6s;"></div>
-    </div>
-    <div style="display:flex;justify-content:space-between;font-size:.52rem;color:var(--muted);margin-top:2px;"><span>0%</span><span style="color:#f59e0b;">10%</span><span style="color:#16a34a;">20%+</span></div>
   `;
 }
 function renderBarChart(months){
@@ -1811,7 +1810,9 @@ function saveSnapshotNow(){
   const now=new Date();
   const key='full_'+now.toISOString().slice(0,16).replace('T','_').replace(':','');
   const totalExp=ALL_TXN.filter(t=>t.type==='expense').reduce((s,t)=>s+t.amount,0);
-  const totalInc=ALL_TXN.filter(t=>t.type==='income').reduce((s,t)=>s+t.amount,0);
+  // 有効収入: 全月の設定値+手動収入を合算
+  const allMonths=[...new Set(ALL_TXN.map(t=>t.monthKey))];
+  const totalInc=allMonths.reduce((s,mk)=>s+getEffectiveIncForMonth(mk),0);
   snaps[key]={
     type:'full',
     label:`全データ保存（${now.getFullYear()}/${now.getMonth()+1}/${now.getDate()} ${String(now.getHours()).padStart(2,'0')}:${String(now.getMinutes()).padStart(2,'0')}）`,
@@ -1912,41 +1913,4 @@ function overwriteSnapshot(mk){
 function deleteSnapshot(mk){
   if(!confirm(mk+' のスナップショットを削除しますか？'))return;
   const snaps=getSnapshots();
-  delete snaps[mk];
-  localStorage.setItem(SNAPSHOT_KEY,JSON.stringify(snaps));
-  renderSnapshotList();
-  showToast(mk+' を削除しました');
-}
-
-// ============================================================
-// 初期化
-// ============================================================
-loadStorage();
-const _m=getMonths();if(_m.length){CURRENT_MONTH=_m[0];render();}
-renderCardBar();
-autoSnapshot();
-</script>
-<!-- スナップショット過去ログ モーダル -->
-<div class="modal-overlay" id="snapshot-modal" onclick="if(event.target===this)closeSnapshotLog()" style="display:none;">
-  <div class="modal-box" style="max-width:480px;">
-    <div class="modal-title">💾 バックアップ</div>
-    <div class="modal-sub">全データを保存・復元できます</div>
-    <!-- バックアップ操作 -->
-    <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin:12px 0 8px;">
-      <button onclick="exportAllData()" style="padding:12px 8px;background:var(--navy);color:#fff;border:none;border-radius:10px;font-size:.77rem;font-weight:700;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:5px;">⬇️ エクスポート<br><span style="font-size:.6rem;opacity:.8;">JSONファイルに保存</span></button>
-      <label style="padding:12px 8px;background:#059669;color:#fff;border-radius:10px;font-size:.77rem;font-weight:700;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:5px;text-align:center;">⬆️ インポート<br><span style="font-size:.6rem;opacity:.8;">JSONから復元</span><input type="file" accept=".json" onchange="importAllData(event)" style="display:none;"></label>
-    </div>
-    <div style="background:#fef9f0;border:1.5px solid #fed7aa;border-radius:8px;padding:8px 10px;font-size:.65rem;color:#92400e;margin-bottom:10px;">
-      ⚠️ インポートすると現在のデータは上書きされます
-    </div>
-    <!-- スナップショット -->
-    <div style="font-size:.72rem;font-weight:700;color:var(--navy);margin-bottom:6px;border-top:1px solid #e2e8f0;padding-top:10px;">📷 スナップショット（過去ログ）</div>
-    <div id="snapshot-list" style="max-height:280px;overflow-y:auto;display:flex;flex-direction:column;gap:8px;margin-bottom:8px;"></div>
-    <div style="display:flex;gap:8px;">
-      <button onclick="saveSnapshotNow()" style="flex:1;padding:9px;background:#4f46e5;color:#fff;border:none;border-radius:10px;font-size:.77rem;font-weight:700;cursor:pointer;">📷 今の状態を保存</button>
-      <button class="btn-cancel" onclick="closeSnapshotLog()">閉じる</button>
-    </div>
-  </div>
-</div>
-</body>
-</html>
+  delete s
