@@ -871,10 +871,10 @@ function renderAssetTable(){
     </tr>`;
   }).join('') : `<tr><td colspan="6" style="padding:18px;text-align:center;color:#94a3b8;font-size:.76rem;">＋ボタンから口座を追加してください</td></tr>`)+
   `</tbody>`;
-  const total=ASSETS.reduce((s,a)=>s+(a.amount||0),0)+REAL_ESTATE.reduce((s,a)=>s+(a.amount||0),0)+OTHER_ASSETS.reduce((s,a)=>s+(a.amount||0),0);
+  const total=ASSETS.reduce((s,a)=>s+(a.amount||0),0);
   const totalMan=Math.round(total/10000*10)/10;
   document.getElementById('asset-total').textContent=total.toLocaleString()+'円（'+totalMan+'万円）';
-  document.getElementById('total-asset-disp').textContent=totalMan+'万円';
+  updateNetWorth();
   renderOwnerBreakdown('asset-owner-breakdown',ASSETS);
 }
 
@@ -927,7 +927,7 @@ function renderRealEstateTable(){
   `</tbody>`;
   const total=REAL_ESTATE.reduce((s,a)=>s+(a.amount||0),0);
   document.getElementById('re-total').textContent=total.toLocaleString()+'円（'+Math.round(total/10000*10)/10+'万円）';
-  document.getElementById('total-asset-disp').textContent=Math.round((ASSETS.reduce((s,a)=>s+(a.amount||0),0)+REAL_ESTATE.reduce((s,a)=>s+(a.amount||0),0)+OTHER_ASSETS.reduce((s,a)=>s+(a.amount||0),0))/10000*10)/10+'万円';
+  updateNetWorth();
 }
 
 function renderOtherAssetsTable(){
@@ -1081,13 +1081,19 @@ function renderOwnerBreakdown(elId,items){
 }
 
 function updateNetWorth(){
-  const assetYen=ASSETS.reduce((s,a)=>s+(a.amount||0),0);
+  const assetYen=ASSETS.reduce((s,a)=>s+(a.amount||0),0)
+    +REAL_ESTATE.reduce((s,a)=>s+(a.amount||0),0)
+    +OTHER_ASSETS.reduce((s,a)=>s+(a.amount||0),0);
   const liabYen =LIABS.reduce((s,l)=>s+(l.amount||0),0);
   const netYen=assetYen-liabYen;
   const toMan=(v)=>Math.round(v/10000*10)/10;
   const el=document.getElementById('net-worth-disp');
   el.textContent=(netYen>=0?'':'-')+Math.abs(toMan(netYen)).toLocaleString()+'万円';
   el.style.color=netYen>=0?'#4ade80':'#f87171';
+  const assetEl=document.getElementById('total-asset-disp');
+  if(assetEl) assetEl.textContent=Math.round(assetYen/10000*10)/10+'万円';
+  const liabEl=document.getElementById('total-liab-disp');
+  if(liabEl) liabEl.textContent=Math.round(liabYen/10000*10)/10+'万円';
   // 名義別純資産（万円表示）
   const owners=getOwners();const byOwner={};
   ASSETS.forEach(a=>{const o=a.owner||'self';byOwner[o]=(byOwner[o]||0)+(a.amount||0);});
