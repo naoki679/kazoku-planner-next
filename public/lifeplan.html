@@ -61,6 +61,20 @@ th,td{vertical-align:middle;}
 <!-- ===== BS ===== -->
 <div id="view-bs">
 
+  <!-- デモモードバナー -->
+  <div id="demo-banner" style="display:none;background:linear-gradient(135deg,#fef3c7,#fde68a);border:2px solid #f59e0b;border-radius:12px;padding:10px 16px;margin-bottom:12px;display:flex;align-items:center;justify-content:space-between;gap:10px;">
+    <span style="font-size:.75rem;color:#92400e;font-weight:700;">🎯 デモ表示中 — サンプルデータで機能をご確認いただけます</span>
+    <button onclick="clearDemo()" style="background:#f59e0b;color:#fff;border:none;padding:5px 12px;border-radius:8px;font-size:.7rem;font-weight:700;cursor:pointer;">データをクリア</button>
+  </div>
+
+  <!-- 松井証券バナー（住宅ローン × NISA） -->
+  <div style="text-align:center;margin-bottom:12px;">
+    <p style="font-size:10px;color:#94a3b8;margin-bottom:6px;">PR</p>
+<a href="https://px.a8.net/svt/ejp?a8mat=455HNM+4HCJ9E+3XCC+6IP2P" rel="nofollow">
+<img border="0" width="468" height="60" alt="" src="https://www21.a8.net/svt/bgt?aid=250518946271&wid=003&eno=01&mid=s00000018318001095000&mc=1" style="max-width:100%;border-radius:6px;"></a>
+<img border="0" width="1" height="1" src="https://www13.a8.net/0.gif?a8mat=455HNM+4HCJ9E+3XCC+6IP2P" alt="">
+  </div>
+
   <!-- 月次ナビ -->
   <div class="card" style="padding:12px 16px;">
     <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
@@ -1361,12 +1375,50 @@ function showToast(msg){
   setTimeout(()=>{el.style.transition='opacity .5s';el.style.opacity='0';setTimeout(()=>{el.style.display='none';el.style.transition='';},500);},2200);
 }
 
+
+// ─── デモモード ───
+const DEMO_DATA = {
+  assets:[
+    {id:'d1',owner:'self',bank:'三菱UFJ銀行',type:'普通預金',amount:3200000,memo:'生活費口座'},
+    {id:'d2',owner:'self',bank:'SBI証券',type:'NISA',amount:8500000,memo:'積立NISA'},
+    {id:'d3',owner:'self',bank:'楽天証券',type:'iDeCo',amount:2300000,memo:'老後資金'},
+    {id:'d4',owner:'joint',bank:'住信SBIネット銀行',type:'定期預金',amount:5000000,memo:'教育資金'}
+  ],
+  liabs:[
+    {id:'d5',owner:'self',bank:'三菱UFJ銀行',type:'住宅ローン',amount:28000000,rate:0.5,endDate:'2052-03',memo:'変動0.5%'}
+  ],
+  realEstate:[
+    {id:'d6',owner:'joint',bank:'〇〇市△△町',type:'自宅（不動産）',amount:35000000,memo:'2022年購入'}
+  ],
+  otherAssets:[
+    {id:'d7',owner:'self',bank:'トヨタ プリウス',type:'自動車',amount:2000000,memo:'2021年購入'}
+  ]
+};
+
+function loadDemoData(){
+  ASSETS=JSON.parse(JSON.stringify(DEMO_DATA.assets));
+  LIABS=JSON.parse(JSON.stringify(DEMO_DATA.liabs));
+  REAL_ESTATE=JSON.parse(JSON.stringify(DEMO_DATA.realEstate));
+  OTHER_ASSETS=JSON.parse(JSON.stringify(DEMO_DATA.otherAssets));
+  BS_ALL[CURRENT_BS_MONTH]={assets:ASSETS,liabs:LIABS,realEstate:REAL_ESTATE,otherAssets:OTHER_ASSETS};
+  document.getElementById('demo-banner').style.display='flex';
+  renderBS();
+}
+function clearDemo(){
+  ASSETS=[];LIABS=[];REAL_ESTATE=[];OTHER_ASSETS=[];
+  BS_ALL[CURRENT_BS_MONTH]={assets:[],liabs:[],realEstate:[],otherAssets:[]};
+  document.getElementById('demo-banner').style.display='none';
+  renderBS();
+}
+
 // ─── 初期化 ───
 loadStorage();
 loadExtraStorage();
 renderBS();
 renderOwnersEditList();
 showTab('bs');
+// データがない場合は自動でデモ表示
+if(!ASSETS.length && !LIABS.length && !REAL_ESTATE.length) loadDemoData();
 </script>
 </body>
 </html>
