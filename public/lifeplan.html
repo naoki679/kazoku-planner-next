@@ -1288,7 +1288,7 @@ function renderProjection(){
   try{fixedAnnual=JSON.parse(localStorage.getItem('kakeibo_recurring_v1')||'[]').reduce((s,c)=>s+(parseFloat(c.amount)||0),0)/10000*12;}catch(e){}
   const eduM=s?.eduMonthly||0, retM=s?.retireMonthly||0;
   const surplus=pl?pl.avgMonthly*12/10000:Math.max(0,annualIncome-(fixedAnnual+eduM*12+retM*12));
-  const initNW=Math.round((ASSETS.reduce((s,a)=>s+(a.amount||0),0)-LIABS.reduce((s,l)=>s+(l.amount||0),0))/10000*10)/10;
+  const initNW=Math.round((ASSETS.reduce((s,a)=>s+(a.amount||0),0)+REAL_ESTATE.reduce((s,a)=>s+(a.amount||0),0)+OTHER_ASSETS.reduce((s,a)=>s+(a.amount||0),0)-LIABS.reduce((s,l)=>s+(l.amount||0),0))/10000*10)/10;
   let nw=initNW, retire=parseFloat(s?.retirePool||0);
   const years=Array.from({length:end-now+1},(_,i)=>now+i);
   const data=years.map(yr=>{
