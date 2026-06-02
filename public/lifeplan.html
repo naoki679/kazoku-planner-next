@@ -523,7 +523,9 @@ function renderOwnersEditList(){
   // 子供（index.html設定から）
   getChildren().forEach((c,i)=>baseOwners.push({id:'child'+i,defaultLabel:c.name||`子供${i+1}`,isChild:true}));
   // カスタム
-  CUSTOM_OWNERS.forEach(o=>baseOwners.push({...o,isCustom:true}));
+  // プランナーの子供と重複するカスタム名義は除外
+  const childNames=new Set(getChildren().map(c=>c.name).filter(Boolean));
+  CUSTOM_OWNERS.filter(o=>!childNames.has(o.label)&&!childNames.has(OWNER_NAMES[o.id])).forEach(o=>baseOwners.push({...o,isCustom:true}));
 
   el.innerHTML=baseOwners.map((o,idx)=>{
     const col=getOwnerColorById(o.id);
@@ -1155,18 +1157,16 @@ function renderTimeline(){
       return{label:`${age}歳`,color:''};
     })});
   }
-  // 子供行（FAMILY_SETTINGS 優先、なければ index.html の children）
-  const familyKids=FAMILY_SETTINGS.children.filter(c=>c.birthYear>0);
-  const sourceKids=familyKids.length?familyKids:children.filter(c=>c.birthYear>0);
-  sourceKids.forEach((ch,ci)=>{
+  // 子供行：常にgetChildren()（プランナー前提条件）を使用
+  children.filter(c=>c.birthYear>0).forEach((ch,ci)=>{
     const name=ch.name||`子供${ci+1}`;
     const bYear=ch.birthYear||0;
-    // index.htmlのデータとマッチングしてunivYearを取得
-    const idxChild=children.find(c=>(c.name===ch.name)||(c.birthYear===bYear))||children[ci];
-    const uYear=idxChild?.univYear||0;
-    const uEnd=uYear+(idxChild?.schoolYears||4);
+    const bMonth=ch.birthMonth||1;
+    const uYear=ch.univYear||0;
+    const uEnd=uYear+(ch.schoolYears||4);
     rows.push({label:`👶 ${name}`,cells:years.map(yr=>{
-      const age=yr-bYear;
+      // 日本の学年基準：4月時点の年齢（4月2日以降生まれは1年遅れ）
+      const age=yr-bYear-(bMonth>4?1:0);
       if(age<0||age>26)return{label:'',color:''};
       if(age===3) return{label:'🎒幼稚園',color:'#fce7f3'};
       if(age===6) return{label:'🏫小入学',color:'#dbeafe'};
