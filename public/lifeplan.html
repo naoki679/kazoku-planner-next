@@ -423,7 +423,11 @@ function getLifeSettings(){
 }
 function getChildren(){
   try{const d=JSON.parse(localStorage.getItem('lifePlanSim_private_v1')||'null');
-    return(d?.children||[]).filter(c=>c.univYear>0);}catch(e){return[];}
+    // config.childrenを参照（numChildrenで絞り込み）
+    const cfg=d?.config;
+    const num=cfg?.numChildren||4;
+    const children=(cfg?.children||[]).slice(0,num);
+    return children.filter(c=>c.univYear>0||c.name);}catch(e){return[];}
 }
 function getKakeiboMonthly(){
   try{const txns=JSON.parse(localStorage.getItem('kakeibo_v1')||'[]');
@@ -571,34 +575,32 @@ function renderFamilySettings(){
     const sAge=FAMILY_SETTINGS.spouseBirth?now-FAMILY_SETTINGS.spouseBirth:0;
     const sd=document.getElementById('family-spouse-age-disp');
     if(sd)sd.textContent=sAge>0?`（現在${sAge}歳）`:'';}
-  // 子供
-  if(!FAMILY_SETTINGS.children.length&&getChildren().length){
-    // index.htmlの子供データから初期値をセット
-    FAMILY_SETTINGS.children=getChildren().map((c,i)=>({
-      name:c.name||`子供${i+1}`,
-      birthYear:c.birthYear||0
-    }));
-  }
-  if(!FAMILY_SETTINGS.children.length) FAMILY_SETTINGS.children=[{name:'子供1',birthYear:0}];
+  // 子供：プランナー（index.html）のデータを参照
+  const plannerChildren=getChildren();
   const el=document.getElementById('family-children-inputs');
   if(!el)return;
-  el.innerHTML=FAMILY_SETTINGS.children.map((ch,i)=>`
-    <div style="display:flex;align-items:center;gap:6px;background:#fff;border-radius:8px;padding:6px 10px;border:1px solid #bbf7d0;">
-      <input type="text" value="${ch.name||''}" placeholder="名前"
-        style="border:1.5px solid var(--border);border-radius:6px;padding:4px 8px;font-size:.74rem;flex:1;"
-        onchange="FAMILY_SETTINGS.children[${i}].name=this.value;saveFamilySettings();">
-      <label style="font-size:.66rem;color:#64748b;white-space:nowrap;">生まれ年</label>
-      <input type="number" value="${ch.birthYear||''}" placeholder="例：2018" min="1990" max="${now}"
-        style="border:1.5px solid var(--border);border-radius:6px;padding:4px 7px;font-size:.74rem;width:80px;"
-        onchange="FAMILY_SETTINGS.children[${i}].birthYear=parseInt(this.value)||0;saveFamilySettings();">
-      <span style="font-size:.66rem;color:#16a34a;">${ch.birthYear?`${now-ch.birthYear}歳`:''}</span>
-      <button onclick="FAMILY_SETTINGS.children.splice(${i},1);saveFamilySettings();renderFamilySettings();"
-        style="background:none;border:none;color:#fca5a5;cursor:pointer;font-size:.85rem;">🗑</button>
-    </div>`).join('');
+  if(plannerChildren.length){
+    el.innerHTML=`<div style="background:#eff6ff;border-radius:8px;padding:8px 12px;font-size:.68rem;color:#1e40af;margin-bottom:4px;">
+      📌 教育・老後資金プランナーの前提条件設定から参照しています
+    </div>`+
+    plannerChildren.map((c,i)=>{
+      const age=c.birthYear?now-c.birthYear+(c.birthMonth&&c.birthMonth>4?-1:0):0;
+      return`<div style="display:flex;align-items:center;gap:8px;background:#f0fdf4;border-radius:8px;padding:6px 12px;border:1px solid #bbf7d0;">
+        <span style="font-size:.78rem;font-weight:800;color:#16a34a;">${c.name||`子供${i+1}`}</span>
+        <span style="font-size:.66rem;color:#64748b;">${c.birthYear?`${c.birthYear}年生まれ・${age}歳`:'生年未設定'}</span>
+        <span style="font-size:.66rem;color:#0284c7;margin-left:auto;">大学入学：${c.univYear||'─'}年</span>
+      </div>`;
+    }).join('');
+  } else {
+    el.innerHTML=`<div style="background:#fef9f0;border-radius:8px;padding:10px 12px;font-size:.7rem;color:#92400e;">
+      ⚠️ プランナーに子供データがありません。<br>
+      <a href="/" style="color:#2563eb;font-weight:700;">教育・老後資金プランナー</a>の前提条件で子供を設定してください。
+    </div>`;
+  }
 }
 function addFamilyChild(){
-  FAMILY_SETTINGS.children.push({name:`子供${FAMILY_SETTINGS.children.length+1}`,birthYear:0});
-  saveFamilySettings();renderFamilySettings();
+  // プランナー参照のため個別追加不要
+  showToast('子供の追加はプランナーの前提条件設定で行ってください');
 }
 function saveFamilySettings(){
   const sb=document.getElementById('family-spouse-birth');
