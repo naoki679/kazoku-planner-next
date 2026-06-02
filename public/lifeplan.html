@@ -439,7 +439,19 @@ function getKakeiboMonthly(){
       const inc=txns.filter(t=>t.monthKey===mk&&t.type==='income').reduce((s,t)=>s+t.amount,0);
       if(exp||inc){total+=inc-exp;n++;}
     });
-    return n?{avgMonthly:Math.round(total/n),months:n}:null;}
+    // 今年1月〜現在の累計貯蓄
+    const now=new Date();
+    const thisYear=now.getFullYear();
+    const thisMonth=`${thisYear}-${String(now.getMonth()+1).padStart(2,'0')}`;
+    const yearStart=`${thisYear}-01`;
+    const yearMonths=([...new Set(txns.map(t=>t.monthKey))]).filter(mk=>mk>=yearStart&&mk<=thisMonth).sort();
+    let yearTotal=0;
+    yearMonths.forEach(mk=>{
+      const exp=txns.filter(t=>t.monthKey===mk&&t.type==='expense').reduce((s,t)=>s+t.amount,0);
+      const inc=txns.filter(t=>t.monthKey===mk&&t.type==='income').reduce((s,t)=>s+t.amount,0);
+      yearTotal+=inc-exp;
+    });
+    return n?{avgMonthly:Math.round(total/n),months:n,yearTotal:yearTotal,yearMonths:yearMonths.length}:null;}
   catch(e){return null;}
 }
 
@@ -1114,20 +1126,15 @@ function updateNetWorth(){
   ASSETS.forEach(a=>{const o=a.owner||'self';byOwner[o]=(byOwner[o]||0)+(a.amount||0);});
   LIABS.forEach(l=>{const o=l.owner||'self';byOwner[o]=(byOwner[o]||0)-(l.amount||0);});
   const rows=owners.filter(o=>byOwner[o.id]);
-  document.getElementById('owner-nw-breakdown').innerHTML=rows.length>1?
-    `<div style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:8px;">`+
-    rows.map(o=>{const vm=toMan(byOwner[o.id]||0);
-      return`<div style="display:flex;align-items:center;gap:6px;background:#f8fafc;border:1.5px solid ${ownerColor(o.id)}44;border-radius:10px;padding:6px 12px;">
-      <span style="width:9px;height:9px;border-radius:50%;background:${ownerColor(o.id)};display:inline-block;flex-shrink:0;"></span>
-      <span style="font-size:.7rem;font-weight:700;color:${ownerColor(o.id)};">${o.label}</span>
-      <span style="font-size:.8rem;font-weight:900;color:${vm>=0?'#16a34a':'#dc2626'};">${vm>=0?'':'-'}${Math.abs(vm).toLocaleString()}万</span>
-    </div>`;}).join('')+`</div>`:'';
+  document.getElementById('owner-nw-breakdown').innerHTML='';
   // PLシンク
   const pl=getKakeiboMonthly();
   const syncEl=document.getElementById('pl-sync-info');
   if(pl){syncEl.style.display='block';
-    document.getElementById('pl-sync-text').textContent=
-      `家計管理より：月次余剰 平均 ${(pl.avgMonthly/10000).toFixed(1)}万円/月（年換算 ${(pl.avgMonthly*12/10000).toFixed(0)}万円）〔直近${pl.months}ヶ月平均〕`;}
+    const yt=pl.yearTotal!=null?(pl.yearTotal/10000).toFixed(1):'─';
+    const sign=pl.yearTotal>=0?'+':'';
+    document.getElementById('pl-sync-text').innerHTML=
+      `家計管理より：<strong style="color:${pl.yearTotal>=0?'#16a34a':'#dc2626'};">${sign}${yt}万円</strong> （${new Date().getFullYear()}年1月〜現在 ${pl.yearMonths||0}ヶ月 累計）`;}
 }
 
 // ─── 年表 ───
