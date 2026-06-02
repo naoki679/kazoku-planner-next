@@ -1358,4 +1358,15 @@ function showTab(t){
 
 function showToast(msg){
   const el=document.getElementById('toast');el.textContent=msg;el.style.display='block';el.style.opacity='1';
-  setTimeout(()=>{el.style.transition='opac
+  setTimeout(()=>{el.style.transition='opacity .5s';el.style.opacity='0';setTimeout(()=>{el.style.display='none';el.style.transition='';},500);},2200);
+}
+
+// ─── 初期化 ───
+loadStorage();
+loadExtraStorage();
+renderBS();
+renderOwnersEditList();
+showTab('bs');
+</script>
+</body>
+</html>
