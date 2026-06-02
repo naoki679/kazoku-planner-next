@@ -13,12 +13,17 @@
 *{box-sizing:border-box;margin:0;padding:0;}
 body{font-family:'Hiragino Sans','Yu Gothic UI',sans-serif;background:var(--bg);color:var(--navy);min-height:100vh;}
 .hd{background:var(--navy);color:#fff;padding:0 16px;height:52px;display:flex;align-items:center;gap:12px;position:sticky;top:0;z-index:100;box-shadow:0 2px 8px rgba(0,0,0,.3);}
-.hd-back{background:none;border:1.5px solid rgba(255,255,255,.3);color:#fff;border-radius:8px;padding:5px 12px;font-size:.75rem;font-weight:700;cursor:pointer;}
-.hd-title{font-size:.9rem;font-weight:900;flex:1;}
-.hd-tabs{display:flex;gap:4px;}
-.hd-tab{background:none;border:none;color:rgba(255,255,255,.55);padding:6px 12px;border-radius:8px;font-size:.73rem;font-weight:700;cursor:pointer;transition:.15s;}
+.hd-back{background:none;border:1.5px solid rgba(255,255,255,.3);color:#fff;border-radius:8px;padding:5px 12px;font-size:.75rem;font-weight:700;cursor:pointer;white-space:nowrap;}
+.hd-title{font-size:.9rem;font-weight:900;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.hd-tabs{display:flex;gap:4px;flex-shrink:0;}
+.hd-tab{background:none;border:none;color:rgba(255,255,255,.55);padding:6px 12px;border-radius:8px;font-size:.73rem;font-weight:700;cursor:pointer;transition:.15s;white-space:nowrap;}
 .hd-tab.active{background:rgba(255,255,255,.2);color:#fff;}
-.main{max-width:1100px;margin:0 auto;padding:16px;}
+@media(max-width:600px){
+  .hd-title{display:none;}
+  .hd-tab{padding:5px 8px;font-size:.68rem;}
+  .hd-back{padding:5px 9px;font-size:.68rem;}
+}
+.main{max-width:1100px;margin:0 auto;padding:16px;overflow-x:hidden;}
 .card{background:var(--card);border-radius:var(--r);padding:18px;box-shadow:var(--shadow);margin-bottom:14px;}
 .sec-hd{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;}
 .sec-title{font-size:.84rem;font-weight:900;color:var(--navy);}
@@ -108,7 +113,7 @@ th,td{vertical-align:middle;}
       <button class="add-btn" onclick="addAccount('asset')">＋ 口座追加</button>
     </div>
     <div id="asset-filter-bar" style="display:flex;flex-wrap:wrap;gap:5px;margin-bottom:10px;"></div>
-    <div class="tl-wrap"><table id="asset-table" style="width:100%;border-collapse:collapse;font-size:.75rem;min-width:500px;"></table></div>
+    <div class="tl-wrap"><table id="asset-table" style="width:100%;border-collapse:collapse;font-size:.75rem;min-width:400px;"></table></div>
     <div id="asset-owner-breakdown"></div>
     <div class="bs-total"><span>資産合計</span><span id="asset-total" style="color:#16a34a;">0万円</span></div>
   </div>
@@ -119,7 +124,7 @@ th,td{vertical-align:middle;}
       <div class="sec-title">🏠 不動産</div>
       <button class="add-btn" onclick="addAccount('realestate')">＋ 追加</button>
     </div>
-    <div class="tl-wrap"><table id="re-table" style="width:100%;border-collapse:collapse;font-size:.75rem;min-width:500px;"></table></div>
+    <div class="tl-wrap"><table id="re-table" style="width:100%;border-collapse:collapse;font-size:.75rem;min-width:400px;"></table></div>
     <div class="bs-total"><span>不動産合計</span><span id="re-total" style="color:#16a34a;">0万円</span></div>
   </div>
 
@@ -129,7 +134,7 @@ th,td{vertical-align:middle;}
       <div class="sec-title">🚗 動産・その他資産</div>
       <button class="add-btn" onclick="addAccount('otherasset')">＋ 追加</button>
     </div>
-    <div class="tl-wrap"><table id="oa-table" style="width:100%;border-collapse:collapse;font-size:.75rem;min-width:500px;"></table></div>
+    <div class="tl-wrap"><table id="oa-table" style="width:100%;border-collapse:collapse;font-size:.75rem;min-width:400px;"></table></div>
     <div class="bs-total"><span>動産・その他合計</span><span id="oa-total" style="color:#16a34a;">0万円</span></div>
   </div>
 
@@ -139,7 +144,7 @@ th,td{vertical-align:middle;}
       <div class="sec-title">🔴 負債・ローン一覧</div>
       <button class="add-btn" onclick="addAccount('liab')">＋ 負債追加</button>
     </div>
-    <div class="tl-wrap"><table id="liab-table" style="width:100%;border-collapse:collapse;font-size:.75rem;min-width:500px;"></table></div>
+    <div class="tl-wrap"><table id="liab-table" style="width:100%;border-collapse:collapse;font-size:.75rem;min-width:400px;"></table></div>
     <div id="liab-owner-breakdown"></div>
     <div id="loan-summary"></div>
     <div class="bs-total"><span>負債合計</span><span id="liab-total" style="color:#dc2626;">0万円</span></div>
