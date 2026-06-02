@@ -62,17 +62,9 @@ th,td{vertical-align:middle;}
 <div id="view-bs">
 
   <!-- デモモードバナー -->
-  <div id="demo-banner" style="display:none;background:linear-gradient(135deg,#fef3c7,#fde68a);border:2px solid #f59e0b;border-radius:12px;padding:10px 16px;margin-bottom:12px;display:flex;align-items:center;justify-content:space-between;gap:10px;">
+  <div id="demo-banner" style="display:none;background:linear-gradient(135deg,#fef3c7,#fde68a);border:2px solid #f59e0b;border-radius:12px;padding:10px 16px;margin-bottom:12px;align-items:center;justify-content:space-between;gap:10px;">
     <span style="font-size:.75rem;color:#92400e;font-weight:700;">🎯 デモ表示中 — サンプルデータで機能をご確認いただけます</span>
     <button onclick="clearDemo()" style="background:#f59e0b;color:#fff;border:none;padding:5px 12px;border-radius:8px;font-size:.7rem;font-weight:700;cursor:pointer;">データをクリア</button>
-  </div>
-
-  <!-- 松井証券バナー（住宅ローン × NISA） -->
-  <div style="text-align:center;margin-bottom:12px;">
-    <p style="font-size:10px;color:#94a3b8;margin-bottom:6px;">PR</p>
-<a href="https://px.a8.net/svt/ejp?a8mat=455HNM+4HCJ9E+3XCC+6IP2P" rel="nofollow">
-<img border="0" width="468" height="60" alt="" src="https://www21.a8.net/svt/bgt?aid=250518946271&wid=003&eno=01&mid=s00000018318001095000&mc=1" style="max-width:100%;border-radius:6px;"></a>
-<img border="0" width="1" height="1" src="https://www13.a8.net/0.gif?a8mat=455HNM+4HCJ9E+3XCC+6IP2P" alt="">
   </div>
 
   <!-- 月次ナビ -->
@@ -1417,8 +1409,8 @@ loadExtraStorage();
 renderBS();
 renderOwnersEditList();
 showTab('bs');
-// データがない場合は自動でデモ表示
-if(!ASSETS.length && !LIABS.length && !REAL_ESTATE.length) loadDemoData();
+// ?demo=1 の場合のみデモ表示（申請用URL専用）
+if(new URLSearchParams(location.search).get('demo')==='1') loadDemoData();
 </script>
 </body>
 </html>
