@@ -430,29 +430,41 @@ function getChildren(){
     return children.filter(c=>c.univYear>0||c.name);}catch(e){return[];}
 }
 function getKakeiboMonthly(){
-  try{const txns=JSON.parse(localStorage.getItem('kakeibo_v1')||'[]');
-    const months=[...new Set(txns.map(t=>t.monthKey))].sort().reverse().slice(0,3);
-    if(!months.length)return null;
-    let total=0,n=0;
-    months.forEach(mk=>{
-      const exp=txns.filter(t=>t.monthKey===mk&&t.type==='expense').reduce((s,t)=>s+t.amount,0);
-      const inc=txns.filter(t=>t.monthKey===mk&&t.type==='income').reduce((s,t)=>s+t.amount,0);
-      if(exp||inc){total+=inc-exp;n++;}
-    });
-    // 今年1月〜現在の累計貯蓄
+  try{
+    const txns=JSON.parse(localStorage.getItem('kakeibo_v1')||'[]');
+    const overrides=JSON.parse(localStorage.getItem('kakeibo_income_override_v1')||'{}');
+    // settings収入（プランナーの給与設定）
+    const sim=JSON.parse(localStorage.getItem('lifePlanSim_private_v1')||'null');
+    const cfg=sim?.config;
+    const settingsInc=cfg?Math.round(((cfg.monthlyIncome||0)+(cfg.spouseIncome||0)+(cfg.bonusAnnual||0)/12)*10000):0;
+    // 有効収入（override > settings+手動収入）
+    function effectiveInc(mk){
+      if(overrides[mk]!=null) return overrides[mk];
+      const manInc=txns.filter(t=>t.monthKey===mk&&t.type==='income').reduce((s,t)=>s+t.amount,0);
+      return settingsInc>0?settingsInc+manInc:manInc;
+    }
     const now=new Date();
     const thisYear=now.getFullYear();
     const thisMonth=`${thisYear}-${String(now.getMonth()+1).padStart(2,'0')}`;
     const yearStart=`${thisYear}-01`;
-    const yearMonths=([...new Set(txns.map(t=>t.monthKey))]).filter(mk=>mk>=yearStart&&mk<=thisMonth).sort();
+    const allMonths=[...new Set(txns.map(t=>t.monthKey))].sort();
+    const yearMonths=allMonths.filter(mk=>mk>=yearStart&&mk<=thisMonth);
+    // 今年累計
     let yearTotal=0;
     yearMonths.forEach(mk=>{
       const exp=txns.filter(t=>t.monthKey===mk&&t.type==='expense').reduce((s,t)=>s+t.amount,0);
-      const inc=txns.filter(t=>t.monthKey===mk&&t.type==='income').reduce((s,t)=>s+t.amount,0);
-      yearTotal+=inc-exp;
+      yearTotal+=effectiveInc(mk)-exp;
     });
-    return n?{avgMonthly:Math.round(total/n),months:n,yearTotal:yearTotal,yearMonths:yearMonths.length}:null;}
-  catch(e){return null;}
+    // 直近3ヶ月平均（surplus推計用）
+    const recent=allMonths.filter(mk=>mk<=thisMonth).slice(-3);
+    let total=0,n=0;
+    recent.forEach(mk=>{
+      const exp=txns.filter(t=>t.monthKey===mk&&t.type==='expense').reduce((s,t)=>s+t.amount,0);
+      const inc=effectiveInc(mk);
+      if(exp||inc){total+=inc-exp;n++;}
+    });
+    return yearMonths.length?{avgMonthly:n?Math.round(total/n):0,months:n,yearTotal:yearTotal,yearMonths:yearMonths.length}:null;
+  }catch(e){return null;}
 }
 
 // ─── 名義ユーティリティ ───
