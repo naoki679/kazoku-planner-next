@@ -1333,29 +1333,30 @@ function renderProjection(){
   try{const d=JSON.parse(localStorage.getItem('lifePlanSim_private_v1')||'null');
     var retireInit=d?.config?.retireCurrent??parseFloat(s?.retirePool||0);}catch(e){var retireInit=0;}
   let nw=initNW, retire=retireInit;
-  // 子供の学費年間コスト（大学在学中のみ：高校〜大学4年）
+  // 子供ごとの学費負担（万円/年）計算
   function getEduCostForYear(yr){
     let total=0;
+    const n=Math.max(children.filter(c=>c.univYear>0).length,1);
     children.forEach(ch=>{
       const uYear=ch.univYear||0;
       const uEnd=uYear+(ch.schoolYears||4);
-      // 大学在学中：eduMonthlyを子供数で割った分
-      if(uYear>0&&yr>=uYear&&yr<uEnd) total+=eduM/(children.length||1);
-      // 高校（univYear-3〜univYear）
-      if(uYear>0&&yr>=uYear-3&&yr<uYear) total+=eduM/(children.length||1)*0.5;
+      if(!uYear)return;
+      if(yr>=uYear&&yr<uEnd) total+=eduM/n;        // 大学在学中
+      else if(yr>=uYear-3&&yr<uYear) total+=eduM/n*0.6; // 高校（やや安い）
     });
     return total;
   }
+  // 現在の学費コスト（余剰金にすでに含まれている基準値）
+  const currentEduCost=getEduCostForYear(now);
   const years=Array.from({length:end-now+1},(_,i)=>now+i);
   const data=years.map(yr=>{
     const ev=EVENTS.filter(e=>e.year===yr).reduce((s,e)=>s+(e.amount||0),0);
     if(yr>now){
       const retired=yr>=retireYear;
-      const eduCost=retired?0:getEduCostForYear(yr)*12;
-      // surplus = 基本余剰金（家計連携使用時はeduMを含む年間余剰） 
-      // 家計連携なし時のみ学費コストを別途計算
-      const annualSurplus=pl?baseSurplus:Math.max(0,baseSurplus-eduCost);
-      nw=nw*(1+rate*0.3)+(retired?0:annualSurplus)+ev;
+      // 学費の年次変動：現在との差分を余剰金に加減
+      const eduDelta=retired?currentEduCost:(currentEduCost-getEduCostForYear(yr));
+      const annualSurplus=retired?0:baseSurplus+eduDelta;
+      nw=nw*(1+rate*0.3)+annualSurplus+ev;
       retire=retire*(1+rate)+(retired?0:retM*12);
     }
     return{yr,nw:Math.round(nw),retire:Math.round(retire),ev,age:age+(yr-now),isRetire:yr===retireYear};
