@@ -15,13 +15,20 @@
 }
 *{box-sizing:border-box;margin:0;padding:0;}
 body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:var(--bg);color:#1e293b;min-height:100vh;}
-.hd{background:var(--navy);color:#fff;padding:12px 20px;display:flex;align-items:center;gap:12px;position:sticky;top:0;z-index:100;}
-.hd-back{background:rgba(255,255,255,.15);border:none;color:#fff;padding:6px 12px;border-radius:8px;cursor:pointer;font-size:.78rem;font-weight:700;touch-action:manipulation;}
-.hd-title{font-size:.95rem;font-weight:900;flex:1;}
+.hd{background:var(--navy);color:#fff;padding:10px 16px;display:flex;align-items:center;gap:10px;position:sticky;top:0;z-index:100;flex-wrap:wrap;}
+.hd-back{background:rgba(255,255,255,.15);border:none;color:#fff;padding:6px 12px;border-radius:8px;cursor:pointer;font-size:.78rem;font-weight:700;touch-action:manipulation;white-space:nowrap;}
+.hd-title{font-size:.95rem;font-weight:900;flex:1;white-space:nowrap;}
 .hd-tabs{display:flex;gap:4px;background:rgba(255,255,255,.1);border-radius:10px;padding:3px;}
-.hd-tab{background:none;border:none;color:rgba(255,255,255,.7);padding:5px 14px;border-radius:7px;cursor:pointer;font-size:.75rem;font-weight:700;touch-action:manipulation;transition:.15s;}
+.hd-tab{background:none;border:none;color:rgba(255,255,255,.7);padding:5px 14px;border-radius:7px;cursor:pointer;font-size:.75rem;font-weight:700;touch-action:manipulation;transition:.15s;white-space:nowrap;}
 .hd-tab.active{background:#fff;color:var(--navy);}
-.hd-btn{background:rgba(255,255,255,.15);border:none;color:#fff;padding:6px 10px;border-radius:8px;cursor:pointer;font-size:.72rem;font-weight:700;touch-action:manipulation;}
+.hd-btn{background:rgba(255,255,255,.15);border:none;color:#fff;padding:6px 10px;border-radius:8px;cursor:pointer;font-size:.72rem;font-weight:700;touch-action:manipulation;white-space:nowrap;}
+@media(max-width:600px){
+  .hd{padding:8px 12px;gap:6px;}
+  .hd-tabs{order:10;width:100%;justify-content:stretch;}
+  .hd-tabs .hd-tab{flex:1;text-align:center;padding:6px 4px;font-size:.7rem;}
+  .hd-title{font-size:.82rem;}
+  .hd-btn{font-size:.65rem;padding:5px 7px;}
+}
 .main{max-width:900px;margin:0 auto;padding:14px;}
 .card-bar{background:var(--card);border-radius:var(--r);padding:12px 16px;margin-bottom:12px;box-shadow:var(--shadow);}
 .card-bar-title{font-size:.68rem;font-weight:800;color:var(--muted);margin-bottom:8px;}
@@ -113,14 +120,14 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 <div class="hd">
   <button class="hd-back" onclick="location.href='index.html'">← 戻る</button>
   <div class="hd-title">💳 家計管理</div>
-  <div class="hd-tabs">
-    <button class="hd-tab active" id="tab-monthly" onclick="switchView('monthly')">月次</button>
-    <button class="hd-tab" id="tab-annual" onclick="switchView('annual')">年間</button>
-    <button class="hd-tab" onclick="location.href='lifeplan.html'" style="border-left:1px solid rgba(255,255,255,.2);margin-left:4px;padding-left:12px;">🗓 資産管理</button>
-  </div>
   <button class="hd-btn" onclick="openCardModal()">🃏 カード</button>
   <button class="hd-btn" onclick="openRecurringModal()">🔁 固定費</button>
-  <button class="hd-btn" onclick="openSnapshotLog()">📷 過去ログ</button>
+  <button class="hd-btn" onclick="openSnapshotLog()">📷 ログ</button>
+  <div class="hd-tabs">
+    <button class="hd-tab active" id="tab-monthly" onclick="switchView('monthly')">📊 月次</button>
+    <button class="hd-tab" id="tab-annual" onclick="switchView('annual')">📅 年間</button>
+    <button class="hd-tab" onclick="location.href='lifeplan.html'" style="opacity:.85;">🗓 資産管理</button>
+  </div>
 </div>
 
 <div class="main">
