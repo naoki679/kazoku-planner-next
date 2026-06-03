@@ -1336,7 +1336,8 @@ function renderProjection(){
   // 老後資金：config.retireCurrentから開始
   try{const d=JSON.parse(localStorage.getItem('lifePlanSim_private_v1')||'null');
     var retireInit=d?.config?.retireCurrent??parseFloat(s?.retirePool||0);}catch(e){var retireInit=0;}
-  let nw=initNW, retire=retireInit;
+  // nwは「老後資金を除いた純資産」として管理し、表示時に retire を加算する
+  let nwBase=initNW-retireInit, retire=retireInit;
   let retMCurrent=retM; // 振替で増加する老後積立額（変動追跡用）
   // 子供ごとの学費負担（万円/年）計算
   function getEduCostForYear(yr){
@@ -1363,10 +1364,12 @@ function renderProjection(){
       // 学費の年次変動：現在との差分を余剰金に加減
       const eduDelta=retired?currentEduCost:(currentEduCost-getEduCostForYear(yr));
       const annualSurplus=retired?0:baseSurplus+eduDelta;
-      nw=nw*(1+rate*0.3)+annualSurplus+ev;
+      // 老後資金以外の純資産（老後積立はretire側に計上済みのためannualSurplusはそのまま）
+      nwBase=nwBase*(1+rate*0.3)+annualSurplus+ev;
       retire=retire*(1+rate)+(retired?0:retMCurrent*12);
     }
-    return{yr,nw:Math.round(nw),retire:Math.round(retire),ev,age:age+(yr-now),isRetire:yr===retireYear};
+    const nw=Math.round(nwBase+retire); // 純資産 = 老後資金以外 + 老後資金
+    return{yr,nw,retire:Math.round(retire),ev,age:age+(yr-now),isRetire:yr===retireYear};
   });
   const retData=data.find(d=>d.yr===retireYear);
   document.getElementById('projection-summary').innerHTML=[
