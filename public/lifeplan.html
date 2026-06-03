@@ -1326,15 +1326,36 @@ function renderProjection(){
   let fixedAnnual=0;
   try{fixedAnnual=JSON.parse(localStorage.getItem('kakeibo_recurring_v1')||'[]').reduce((s,c)=>s+(parseFloat(c.amount)||0),0)/10000*12;}catch(e){}
   const eduM=s?.eduMonthly||0, retM=s?.retireMonthly||0;
-  const surplus=pl?pl.avgMonthly*12/10000:Math.max(0,annualIncome-(fixedAnnual+eduM*12+retM*12));
+  // 基本余剰金（家計連携優先）
+  const baseSurplus=pl?pl.avgMonthly*12/10000:Math.max(0,annualIncome-(fixedAnnual+eduM*12+retM*12));
   const initNW=Math.round((ASSETS.reduce((s,a)=>s+(a.amount||0),0)+REAL_ESTATE.reduce((s,a)=>s+(a.amount||0),0)+OTHER_ASSETS.reduce((s,a)=>s+(a.amount||0),0)-LIABS.reduce((s,l)=>s+(l.amount||0),0))/10000*10)/10;
-  let nw=initNW, retire=parseFloat(s?.retirePool||0);
+  // 老後資金：config.retireCurrentから開始
+  try{const d=JSON.parse(localStorage.getItem('lifePlanSim_private_v1')||'null');
+    var retireInit=d?.config?.retireCurrent??parseFloat(s?.retirePool||0);}catch(e){var retireInit=0;}
+  let nw=initNW, retire=retireInit;
+  // 子供の学費年間コスト（大学在学中のみ：高校〜大学4年）
+  function getEduCostForYear(yr){
+    let total=0;
+    children.forEach(ch=>{
+      const uYear=ch.univYear||0;
+      const uEnd=uYear+(ch.schoolYears||4);
+      // 大学在学中：eduMonthlyを子供数で割った分
+      if(uYear>0&&yr>=uYear&&yr<uEnd) total+=eduM/(children.length||1);
+      // 高校（univYear-3〜univYear）
+      if(uYear>0&&yr>=uYear-3&&yr<uYear) total+=eduM/(children.length||1)*0.5;
+    });
+    return total;
+  }
   const years=Array.from({length:end-now+1},(_,i)=>now+i);
   const data=years.map(yr=>{
     const ev=EVENTS.filter(e=>e.year===yr).reduce((s,e)=>s+(e.amount||0),0);
     if(yr>now){
       const retired=yr>=retireYear;
-      nw=nw*(1+rate*0.3)+(retired?0:surplus)+ev;
+      const eduCost=retired?0:getEduCostForYear(yr)*12;
+      // surplus = 基本余剰金（家計連携使用時はeduMを含む年間余剰） 
+      // 家計連携なし時のみ学費コストを別途計算
+      const annualSurplus=pl?baseSurplus:Math.max(0,baseSurplus-eduCost);
+      nw=nw*(1+rate*0.3)+(retired?0:annualSurplus)+ev;
       retire=retire*(1+rate)+(retired?0:retM*12);
     }
     return{yr,nw:Math.round(nw),retire:Math.round(retire),ev,age:age+(yr-now),isRetire:yr===retireYear};
