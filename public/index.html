@@ -2256,6 +2256,18 @@ function recalc(){
     if(rowEl) rowEl.style.display = 'none';
   }
 
+  // 振替スケジュールをlocalStorageに保存（lifeplan.htmlと共有）
+  try {
+    if(stepUpOn && stepUpResult){
+      localStorage.setItem('kazoku_stepup_v1', JSON.stringify({
+        on: true,
+        steps: stepUpResult.steps.map(s=>({year:s.year,amount:s.amount,label:s.label}))
+      }));
+    } else {
+      localStorage.setItem('kazoku_stepup_v1', JSON.stringify({on:false,steps:[]}));
+    }
+  } catch(e){}
+
   // Retire chart
   updateRetireChart(retireMonthly, stepUpOn ? stepUpResult : null);
 
