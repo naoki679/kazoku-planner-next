@@ -1978,6 +1978,9 @@ function recalc(){
 
     function allCovered(m) {
       const perChild = Math.max(0, (m - fundMonthlyUsed) / numCh);
+      // calcAllCascadedと同じ: ファンド初期費用の控除元となる子を特定
+      const fundInitial   = fund ? (fund.initial || 0) : 0;
+      const fundSrcChild  = (fundInitial > 0) ? getFundInitSourceChild(fund.startYear) : null;
       let sibSurplus = 0, sibBonusYear = 0;
       for (const ch of CHILDREN) {
         const r = calcChild(ch, perChild, sibSurplus, sibBonusYear);
@@ -1985,7 +1988,12 @@ function recalc(){
         const adjGap = r.gap - (fundTargetId === ch.id ? fundFV : 0);
         if (adjGap > 0) return false;
         // 次の弟への余剰はadjGapベースで再計算
-        sibSurplus    = Math.max(0, Math.round(-adjGap));
+        let nextSurplus = Math.max(0, Math.round(-adjGap));
+        // calcAllCascadedと同様: ソース子の余剰からファンド初期費用を控除
+        if (fundSrcChild && fundSrcChild.id === ch.id && fundInitial > 0) {
+          nextSurplus = Math.max(0, nextSurplus - fundInitial);
+        }
+        sibSurplus    = nextSurplus;
         sibBonusYear  = ch.univEndYear;
       }
       return true;
@@ -2080,7 +2088,8 @@ function recalc(){
 
   // Summary banner
   const banner=document.getElementById('goal-banner');
-  const eduOk = totalEduGap<=0;
+  // eduOkはminEduTotalとの比較で判定（totalEduGapとの不整合を回避）
+  const eduOk = eduMonthly >= minEduTotal - 0.05; // 0.05万の誤差許容
   const retireAgeAtAchieve = retireYear ? (retireYear - CURRENT_YEAR + ownerAge) : null;
   if(eduOk && retireYear){
     const goalYear = Math.max(retireYear, Math.max(...CHILDREN.map(c=>c.univYear)));
