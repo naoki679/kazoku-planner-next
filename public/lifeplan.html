@@ -366,6 +366,22 @@ function onAmountInput(el, arr, idx, extra){
   else if(arr==='OTHER_ASSETS') OTHER_ASSETS[idx].amount=n;
   else LIABS[idx].amount=n;
   saveStorage();
+  // セクション別合計を即時更新
+  if(arr==='REAL_ESTATE'){
+    const t=REAL_ESTATE.reduce((s,a)=>s+(a.amount||0),0);
+    const el2=document.getElementById('re-total');
+    if(el2) el2.textContent=t.toLocaleString()+'円（'+Math.round(t/10000*10)/10+'万円）';
+  }
+  if(arr==='OTHER_ASSETS'){
+    const t=OTHER_ASSETS.reduce((s,a)=>s+(a.amount||0),0);
+    const el2=document.getElementById('oa-total');
+    if(el2) el2.textContent=t.toLocaleString()+'円（'+Math.round(t/10000*10)/10+'万円）';
+  }
+  if(arr==='ASSETS'){
+    const t=ASSETS.reduce((s,a)=>s+(a.amount||0),0);
+    const el2=document.getElementById('asset-total');
+    if(el2) el2.textContent=t.toLocaleString()+'円（'+Math.round(t/10000*10)/10+'万円）';
+  }
   if(extra==='nw') updateNetWorth();
   if(extra==='loan') {updateNetWorth();renderLoanSummary();}
 }
