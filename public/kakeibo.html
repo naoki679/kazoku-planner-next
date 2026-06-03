@@ -1639,14 +1639,18 @@ function renderDetail(txns){
   </div>`:''
   // カテゴリーフィルターチップ
   const expCats=[...new Set(txns.filter(t=>t.type==='expense').map(t=>t.category))].sort();
-  const filterHtml=expCats.length>1?
+  const hasIncome=txns.some(t=>t.type==='income');
+  const filterHtml=(expCats.length>1||hasIncome)?
     `<div style="display:flex;flex-wrap:wrap;gap:5px;padding:8px 0 4px;">
       <button onclick="setCatFilter('all')" style="font-size:.65rem;padding:3px 9px;border-radius:20px;border:1.5px solid ${FILTER_CAT==='all'?'#1a2b4a':'#e2e8f0'};background:${FILTER_CAT==='all'?'#1a2b4a':'#f8fafc'};color:${FILTER_CAT==='all'?'#fff':'#475569'};cursor:pointer;font-weight:700;">全て</button>`+
+      (hasIncome?`<button onclick="setCatFilter('収入')" style="font-size:.65rem;padding:3px 9px;border-radius:20px;border:1.5px solid ${FILTER_CAT==='収入'?'#16a34a':'#e2e8f0'};background:${FILTER_CAT==='収入'?'#16a34a':'#f8fafc'};color:${FILTER_CAT==='収入'?'#fff':'#16a34a'};cursor:pointer;font-weight:700;">💰 収入</button>`:'') +
       expCats.map(c=>{const ic=CAT_ICONS[c]||'';const col=CAT_COLORS[c]||'#64748b';const on=FILTER_CAT===c;
         return`<button onclick="setCatFilter('${c}')" style="font-size:.65rem;padding:3px 9px;border-radius:20px;border:1.5px solid ${on?col:'#e2e8f0'};background:${on?col:'#f8fafc'};color:${on?'#fff':col};cursor:pointer;font-weight:700;">${ic} ${c}</button>`;
       }).join('')+`</div>`:'';
   // フィルター適用
-  const filtered=FILTER_CAT==='all'?txns:txns.filter(t=>t.type==='income'||t.category===FILTER_CAT);
+  const filtered=FILTER_CAT==='all'?txns
+    :FILTER_CAT==='収入'?txns.filter(t=>t.type==='income')
+    :txns.filter(t=>t.type==='expense'&&t.category===FILTER_CAT);
   const cats=[...new Set([...Object.keys(CAT_COLORS),...ALL_TXN.map(t=>t.category)])].filter(c=>!['給与','ボーナス','副収入','その他収入','未分類'].includes(c)).sort();
   el.innerHTML=dayBanner+filterHtml+filtered.map(t=>{
     const color=t.type==='income'?'#16a34a':(CAT_COLORS[t.category]||'#64748b');
