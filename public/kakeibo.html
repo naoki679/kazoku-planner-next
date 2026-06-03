@@ -1425,14 +1425,27 @@ function renderSavingsPace(months,curInc,curExp){
   // 積立配分タブ
   // 今月の「積立・投資系支出」をカテゴリで抽出（カード払い・引き落とし問わず）
   // 専用カテゴリ（このアプリの主要目標）
-  const RETIRE_CATS=['投資信託（老後資金用）']; // 老後資金向け（優先度順）
-  const EDU_CATS=['投資信託（教育資金用）','保険（教育資金用）']; // 教育資金向け
-  const RETIRE_PRIMARY=['投資信託（老後資金用）']; // 明示的老後専用
-  const EDU_PRIMARY=['投資信託（教育資金用）','保険（教育資金用）']; // 明示的教育専用
+  const RETIRE_CATS=['投資信託（老後資金用）'];
+  const EDU_CATS=['投資信託（教育資金用）','保険（教育資金用）'];
   const monthExp=ALL_TXN.filter(t=>t.monthKey===CURRENT_MONTH&&t.type==='expense');
-  // 明示的専用カテゴリを優先、なければ汎用カテゴリも含む
-  const retireInvest=monthExp.filter(t=>RETIRE_CATS.includes(t.category)).reduce((s,t)=>s+t.amount,0);
-  const eduInsurance=monthExp.filter(t=>EDU_CATS.includes(t.category)).reduce((s,t)=>s+t.amount,0);
+  let retireInvest=monthExp.filter(t=>RETIRE_CATS.includes(t.category)).reduce((s,t)=>s+t.amount,0);
+  let eduInsurance=monthExp.filter(t=>EDU_CATS.includes(t.category)).reduce((s,t)=>s+t.amount,0);
+  // 当月に積立なし → 直近3ヶ月から最後に記録があった月の値を参照
+  let retireNote='', eduNote='';
+  if(retireInvest===0){
+    const months=getMonths().filter(mk=>mk!==CURRENT_MONTH).slice(0,3);
+    for(const mk of months){
+      const v=ALL_TXN.filter(t=>t.monthKey===mk&&t.type==='expense'&&RETIRE_CATS.includes(t.category)).reduce((s,t)=>s+t.amount,0);
+      if(v>0){retireInvest=v;retireNote=`（${parseInt(mk.split('-')[1])}月実績）`;break;}
+    }
+  }
+  if(eduInsurance===0){
+    const months=getMonths().filter(mk=>mk!==CURRENT_MONTH).slice(0,3);
+    for(const mk of months){
+      const v=ALL_TXN.filter(t=>t.monthKey===mk&&t.type==='expense'&&EDU_CATS.includes(t.category)).reduce((s,t)=>s+t.amount,0);
+      if(v>0){eduInsurance=v;eduNote=`（${parseInt(mk.split('-')[1])}月実績）`;break;}
+    }
+  }
   const surplus=curInc-curExp;
   if(!sim){
     el.innerHTML=tabHtml+'<div style="font-size:.62rem;color:#94a3b8;text-align:center;padding:8px;">シミュレーター（トップページ）を開くと<br>達成率が表示されます</div>';
@@ -1455,12 +1468,13 @@ function renderSavingsPace(months,curInc,curExp){
   // 総合判定
   const allOk=retOk&&eduOk;
   const statusColor=allOk?'#16a34a':retOk||eduOk?'#f59e0b':'#dc2626';
-  const statusMsg=allOk?'✅ 両方クリア':retOk&&!eduOk?`🎓 教育資金 ${(eduShortfall/10000).toFixed(1)}万不足`:!retOk&&eduOk?`🌙 老後資金 ${(retGap/10000).toFixed(1)}万不足`:`❌ 老後${(retGap/10000).toFixed(1)}万・教育${(eduShortfall/10000).toFixed(1)}万不足`;
+  const eduMsg=surplus<0?'収支マイナス':(surplus>=eduTarget?'確保OK':`${(Math.min(eduTarget,Math.max(0,surplus))/10000).toFixed(1)}万確保`);
+  const statusMsg=allOk?'✅ 両方クリア':retOk&&!eduOk?`🎓 教育：${eduMsg}`:!retOk&&eduOk?`🌙 老後 ${(retGap/10000).toFixed(1)}万不足`:`🌙 老後 ${(retGap/10000).toFixed(1)}万不足 / 🎓 教育：${eduMsg}`;
   el.innerHTML=tabHtml+`
     <div style="display:flex;flex-direction:column;gap:6px;">
       <div style="padding:4px 8px;background:#f8fafc;border-radius:8px;border-left:3px solid #10b981;">
         <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:3px;">
-          <span style="font-size:.62rem;font-weight:700;color:#10b981;">🌙 老後資金</span>
+          <span style="font-size:.62rem;font-weight:700;color:#10b981;">🌙 老後資金${retireNote?` <span style="font-size:.5rem;color:#94a3b8;">${retireNote}</span>`:''}</span>
           <span style="font-size:.72rem;font-weight:900;color:${retColor};">${retOk?`✅ ${(retTarget/10000).toFixed(1)}万`:`${(retireInvest/10000).toFixed(1)}万`} <span style="color:#94a3b8;font-size:.55rem;">/ 設定 ${(retTarget/10000).toFixed(1)}万</span></span>
         </div>
         <div style="background:#e2e8f0;border-radius:3px;height:5px;overflow:hidden;">
@@ -1471,12 +1485,12 @@ function renderSavingsPace(months,curInc,curExp){
       <div style="padding:4px 8px;background:#f8fafc;border-radius:8px;border-left:3px solid #0284c7;">
         <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:3px;">
           <span style="font-size:.62rem;font-weight:700;color:#0284c7;">🎓 教育資金（余剰金から確保）</span>
-          <span style="font-size:.72rem;font-weight:900;color:${eduColor};">${eduOk?`✅ ${(eduTarget/10000).toFixed(1)}万`:`${(Math.max(0,surplus)/10000).toFixed(1)}万`} <span style="color:#94a3b8;font-size:.55rem;">/ 必要 ${(eduTarget/10000).toFixed(1)}万</span></span>
+          <span style="font-size:.72rem;font-weight:900;color:${eduColor};">${eduOk?`✅ ${(eduTarget/10000).toFixed(1)}万`:`${(Math.min(Math.max(0,surplus),eduTarget)/10000).toFixed(1)}万`} <span style="color:#94a3b8;font-size:.55rem;">/ 必要 ${(eduTarget/10000).toFixed(1)}万</span></span>
         </div>
         <div style="background:#e2e8f0;border-radius:3px;height:5px;overflow:hidden;">
           <div style="height:5px;border-radius:3px;background:${eduColor};width:${eduPct}%;transition:width .5s;"></div>
         </div>
-        <div style="font-size:.52rem;color:var(--muted);margin-top:2px;">${eduOk?'✅ 余剰金で確保できます':`⚠️ 余剰金が ${(eduShortfall/10000).toFixed(1)}万 不足`}</div>
+        <div style="font-size:.52rem;color:var(--muted);margin-top:2px;">${surplus<0?'❌ 収支がマイナスのため現金確保できません':eduOk?'✅ 余剰金で確保できます':`⚠️ 余剰金が ${(eduTarget/10000).toFixed(1)}万に対し ${(Math.max(0,surplus)/10000).toFixed(1)}万 確保`}</div>
       </div>
       <div style="display:flex;justify-content:space-between;align-items:center;padding:5px 8px;background:#f8fafc;border-radius:7px;border:1px solid #e2e8f0;">
         <span style="font-size:.62rem;color:var(--muted);">今月余剰金</span>
