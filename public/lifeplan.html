@@ -1325,7 +1325,7 @@ function renderProjection(){
   const annualIncome=((s?.monthlyIncome||0)+(s?.spouseIncome||0))*12+(s?.bonusAnnual||0);
   let fixedAnnual=0;
   try{fixedAnnual=JSON.parse(localStorage.getItem('kakeibo_recurring_v1')||'[]').reduce((s,c)=>s+(parseFloat(c.amount)||0),0)/10000*12;}catch(e){}
-  const eduM=s?.eduMonthly||0, retM=s?.retireMonthly||0;
+  const eduM=parseFloat(s?.eduMonthly)||0, retM=parseFloat(s?.retireMonthly)||0;
   // 振替スケジュール（index.htmlのstepUpと共有）
   let stepUpSteps=[];
   try{const su=JSON.parse(localStorage.getItem('kazoku_stepup_v1')||'null');
@@ -1358,7 +1358,7 @@ function renderProjection(){
     const ev=EVENTS.filter(e=>e.year===yr).reduce((s,e)=>s+(e.amount||0),0);
     if(yr>now){
       // 振替ステップアップ：該当年に老後積立額を増やす
-      stepUpSteps.forEach(step=>{ if(yr===step.year) retMCurrent+=step.amount; });
+      stepUpSteps.forEach(step=>{ if(yr===step.year) retMCurrent+=parseFloat(step.amount)||0; });
       const retired=yr>=retireYear;
       // 学費の年次変動：現在との差分を余剰金に加減
       const eduDelta=retired?currentEduCost:(currentEduCost-getEduCostForYear(yr));
@@ -1370,8 +1370,8 @@ function renderProjection(){
   });
   const retData=data.find(d=>d.yr===retireYear);
   document.getElementById('projection-summary').innerHTML=[
-    ['定年時 純資産','#f0fdf4','#16a34a',retData?(retData.nw).toLocaleString():'─'],
-    ['定年時 老後資金','#f0f9ff','#0891b2',retData?(retData.retire).toLocaleString():'─'],
+    ['定年時 純資産','#f0f9ff','#0891b2',retData?(retData.nw).toLocaleString():'─'],
+    ['定年時 老後資金','#f0fdf4','#10b981',retData?(retData.retire).toLocaleString():'─'],
     ['ピーク純資産','#fef9ec','#f59e0b',Math.max(...data.map(d=>d.nw)).toLocaleString()],
   ].map(([l,bg,col,v])=>`<div style="background:${bg};border-radius:10px;padding:12px;text-align:center;">
     <div style="font-size:.63rem;color:#94a3b8;margin-bottom:4px;">${l}</div>
