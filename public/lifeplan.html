@@ -449,10 +449,14 @@ function getKakeiboMonthly(){
   try{
     const txns=JSON.parse(localStorage.getItem('kakeibo_v1')||'[]');
     const overrides=JSON.parse(localStorage.getItem('kakeibo_income_override_v1')||'{}');
-    // settings収入（プランナーの給与設定）
+    // settings収入：kakeibo.htmlと同じロジックでinputsから読む
     const sim=JSON.parse(localStorage.getItem('lifePlanSim_private_v1')||'null');
-    const cfg=sim?.config;
-    const settingsInc=cfg?Math.round(((cfg.monthlyIncome||0)+(cfg.spouseIncome||0)+(cfg.bonusAnnual||0)/12)*10000):0;
+    const inp=sim?.inputs;
+    const selfInc=parseFloat(inp?.monthlyIncome)||0;
+    const spouseInc=parseFloat(inp?.spouseIncome)||0;
+    const bonusAnnual=parseFloat(inp?.bonusAnnual)||0;
+    const settingsIncMan=Math.round((selfInc+spouseInc+bonusAnnual/12)*10)/10; // 万円
+    const settingsInc=Math.round(settingsIncMan*10000); // 円
     // 有効収入（override > settings+手動収入）
     function effectiveInc(mk){
       if(overrides[mk]!=null) return overrides[mk];
