@@ -1400,20 +1400,40 @@ function renderProjection(){
     <span><span style="display:inline-block;width:22px;border-top:2px dashed #10b981;margin-right:4px;vertical-align:middle;"></span>老後資金</span>
     <span><span style="display:inline-block;width:22px;border-top:2px dashed #f59e0b;margin-right:4px;vertical-align:middle;"></span>定年</span>
     <span>● 費用イベント（赤）/ 収入イベント（緑）</span>`;
+  // 住宅ローン残高の年次計算
+  const mortgages=LIABS.filter(l=>l.type==='住宅ローン'&&l.amount>0&&l.endDate);
+  function calcLoanBalanceAtYear(loan, yr){
+    if(!loan.endDate) return 0;
+    const endDate=new Date(loan.endDate+'-01');
+    const baseDate=new Date();
+    const totalMonths=Math.max(1,Math.round((endDate-baseDate)/(1000*60*60*24*30.44)));
+    const elapsed=Math.min((yr-now)*12, totalMonths);
+    if(elapsed>=totalMonths) return 0;
+    const r=loan.rate/100/12;
+    const P=loan.amount; // 円
+    if(r===0) return Math.round(P*(totalMonths-elapsed)/totalMonths/10000);
+    const monthly=P*r*Math.pow(1+r,totalMonths)/(Math.pow(1+r,totalMonths)-1);
+    const remaining=P*Math.pow(1+r,elapsed)-monthly*((Math.pow(1+r,elapsed)-1)/r);
+    return Math.max(0,Math.round(remaining/10000));
+  }
+  const hasMortgage=mortgages.length>0;
   // テーブル
   const TH='padding:7px 8px;text-align:left;font-size:.63rem;color:var(--muted);border-bottom:2px solid var(--border);white-space:nowrap;';
   document.getElementById('projection-table').innerHTML=
     `<thead><tr style="background:#f8fafc;"><th style="${TH}">年</th><th style="${TH}">年齢</th>
     <th style="${TH}">純資産</th><th style="${TH}">老後資金</th>
+    ${hasMortgage?`<th style="${TH}">住宅ローン残高</th>`:''}
     <th style="${TH}">イベント費用</th><th style="${TH}">イベント</th></tr></thead><tbody>`+
     data.map(d=>{
       const evs=EVENTS.filter(e=>e.year===d.yr);
       const bg=d.isRetire?'#fef9c3':d.yr===now?'#eff6ff':'';
+      const loanBal=hasMortgage?mortgages.reduce((s,l)=>s+calcLoanBalanceAtYear(l,d.yr),0):0;
       return`<tr style="background:${bg};border-bottom:1px solid #f1f5f9;">
         <td style="padding:6px 8px;font-size:.7rem;font-weight:${d.isRetire||d.yr===now?800:400};">${d.yr}</td>
         <td style="padding:6px 8px;font-size:.7rem;">${d.age}歳</td>
         <td style="padding:6px 8px;font-size:.72rem;font-weight:700;color:${d.nw>=0?'#0891b2':'#dc2626'};">${d.nw.toLocaleString()}万</td>
         <td style="padding:6px 8px;font-size:.72rem;color:#10b981;">${d.retire.toLocaleString()}万</td>
+        ${hasMortgage?`<td style="padding:6px 8px;font-size:.72rem;color:${loanBal>0?'#dc2626':'#16a34a'};font-weight:700;">${loanBal>0?loanBal.toLocaleString()+'万':'完済 ✅'}</td>`:''}
         <td style="padding:6px 8px;font-size:.68rem;color:${d.ev<0?'#dc2626':'#16a34a'};font-weight:${d.ev?700:400};">${d.ev?(d.ev>0?'+':'')+d.ev+'万':'─'}</td>
         <td style="padding:6px 8px;font-size:.65rem;color:#64748b;">${evs.map(e=>EV_ICONS[e.cat]+e.name).join(' ')||'─'}</td>
       </tr>`;
