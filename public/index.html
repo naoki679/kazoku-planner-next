@@ -643,12 +643,21 @@ input[type=range]{flex:1;height:4px;accent-color:var(--blue);cursor:pointer;}
   <div class="sb-section">
     <div class="sb-title">⚙️ 詳細設定</div>
     <div class="sb-field">
-      <div class="sb-label">老後目標額 <span class="val-badge" id="badge-retire-target">2000万円</span></div>
-      <div class="num-row">
-        <button class="num-btn" onclick="adj('retireTarget',-100)">−</button>
-        <input type="number" id="retireTarget" value="2000" min="500" max="5000" step="100" oninput="recalc()">
-        <button class="num-btn" onclick="adj('retireTarget',100)">＋</button>
-        <span class="input-unit">万円</span>
+      <div class="sb-label">老後目標 <span class="val-badge" id="badge-retire-target">65歳・2000万円</span></div>
+      <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;">
+        <div class="num-row" style="flex:1;min-width:0;">
+          <button class="num-btn" onclick="adj('retireAge',-1)">−</button>
+          <input type="number" id="retireAge" value="65" min="50" max="80" step="1" oninput="recalc()" style="width:46px;">
+          <button class="num-btn" onclick="adj('retireAge',1)">＋</button>
+          <span class="input-unit">歳</span>
+        </div>
+        <span style="font-size:.7rem;color:var(--muted);">まで</span>
+        <div class="num-row" style="flex:2;min-width:0;">
+          <button class="num-btn" onclick="adj('retireTarget',-100)">−</button>
+          <input type="number" id="retireTarget" value="2000" min="500" max="5000" step="100" oninput="recalc()">
+          <button class="num-btn" onclick="adj('retireTarget',100)">＋</button>
+          <span class="input-unit">万円</span>
+        </div>
       </div>
     </div>
     <div class="sb-field">
@@ -1749,14 +1758,17 @@ function recalc(){
 
   // 65歳達成年の動的計算
   const ownerAge = Math.max(20, Math.min(64, v('ownerAge') || 35));
-  const yearsTo65 = Math.max(1, 65 - ownerAge);
-  RETIRE_TARGET_YEAR = CURRENT_YEAR + yearsTo65;
+  const retireAge = Math.max(ownerAge+1, Math.min(80, v('retireAge') || 65));
+  const yearsToRetire = Math.max(1, retireAge - ownerAge);
+  RETIRE_TARGET_YEAR = CURRENT_YEAR + yearsToRetire;
   const ageBadge = document.getElementById('badge-owner-age');
   if(ageBadge) ageBadge.textContent = ownerAge + '歳';
+  const retBadge = document.getElementById('badge-retire-target');
+  if(retBadge) retBadge.textContent = `${retireAge}歳・${v('retireTarget').toLocaleString()}万円`;
   const hintEl = document.getElementById('retire-age65-hint');
-  if(hintEl) hintEl.textContent = `🎯 65歳（${RETIRE_TARGET_YEAR}年）までに老後資金を達成する計画`;
+  if(hintEl) hintEl.textContent = `🎯 ${retireAge}歳（${RETIRE_TARGET_YEAR}年）までに老後資金を達成する計画`;
   const needRetireSubEl = document.getElementById('need-retire-sub');
-  if(needRetireSubEl) needRetireSubEl.textContent = `65歳（${RETIRE_TARGET_YEAR}年）までに達成する月額`;
+  if(needRetireSubEl) needRetireSubEl.textContent = `${retireAge}歳（${RETIRE_TARGET_YEAR}年）までに達成する月額`;
 
   const eduMonthly = v('eduMonthly');
   const retireMonthly = v('retireMonthly');
@@ -2059,14 +2071,14 @@ function recalc(){
   document.getElementById('retire-gap').textContent =
     retireGap65 > 0 ? '▲' + retireGap65.toLocaleString() + '万円' : '✅ 達成見込み';
   document.getElementById('retire-year').textContent =
-    retireYear ? retireYear + '年（' + (retireYear - CURRENT_YEAR + ownerAge) + '歳）' : `65歳時 ${retirePct65}%`;
+    retireYear ? retireYear + '年（' + (retireYear - CURRENT_YEAR + ownerAge) + '歳）' : `${retireAge}歳時 ${retirePct65}%`;
   document.getElementById('retire-monthly-disp').textContent = retireMonthly + '万円/月';
 
   const rs = retireYear
     ? {bg:'#f0fdf4', cl:'#15803d', tx:'📈 '+retireYear+'年（'+( retireYear - CURRENT_YEAR + ownerAge)+'歳）達成'}
     : retirePct65 >= 80
-      ? {bg:'#fffbeb', cl:'#92400e', tx:'⚠️ 65歳時'+retirePct65+'%'}
-      : {bg:'#fef2f2', cl:'#991b1b', tx:'❌ 65歳時'+retirePct65+'%'};
+      ? {bg:'#fffbeb', cl:'#92400e', tx:'⚠️ '+retireAge+'歳時'+retirePct65+'%'}
+      : {bg:'#fef2f2', cl:'#991b1b', tx:'❌ '+retireAge+'歳時'+retirePct65+'%'};
   const rb = document.getElementById('badge-retire-status');
   rb.textContent = rs.tx; rb.style.background = rs.bg; rb.style.color = rs.cl;
 
@@ -2078,6 +2090,7 @@ function recalc(){
       retirePct: retirePct65,
       retireCurrent: RETIRE_CURRENT,
       retireTarget,
+      retireAge,
       eduPct,
       eduMonthly,
       minEduTotal,
@@ -2106,8 +2119,8 @@ function recalc(){
   } else {
     banner.className='goal-banner danger';
     banner.innerHTML=`<span class="gs-big" style="color:#991b1b;">⚠️ 老後資金が65歳（${RETIRE_TARGET_YEAR}年）までに未達の見込みです</span>
-      <span class="gs-sub">65歳時点の達成率: ${retirePct65}%（見込み残高 ${poolAt65.toLocaleString()}万円）</span>
-      <span class="gs-hint">老後用月積立を <strong>${minRetire.toFixed(1)}万円</strong>以上に増やすと65歳までに達成できます</span>`;
+      <span class="gs-sub">${retireAge}歳時点の達成率: ${retirePct65}%（見込み残高 ${poolAt65.toLocaleString()}万円）</span>
+      <span class="gs-hint">老後用月積立を <strong>${minRetire.toFixed(1)}万円</strong>以上に増やすと${retireAge}歳までに達成できます</span>`;
   }
 
   // Child cards（専用ファンド情報・調整済みeduPerChildも渡す）
@@ -2230,7 +2243,7 @@ function recalc(){
       const diffTxt = diff > 0 ? `⚡ ${diff}年早まる` : diff === 0 ? '変化なし' : '';
       resEl.innerHTML = stepUpResult.achieveStep
         ? `🎯 振替後: <strong style="color:#059669;font-size:.9rem;">${stepUpResult.achieveStep}年</strong> に達成 <span style="color:#d97706;font-weight:800;">${diffTxt}</span>`
-        : `65歳（${RETIRE_TARGET_YEAR}年）までに未達（65歳時 ${retirePct65??'─'}%）`;
+        : `${retireAge}歳（${RETIRE_TARGET_YEAR}年）までに未達（${retireAge}歳時 ${retirePct65??'─'}%）`;
     }
     // 老後カード: 振替結果行の表示
     const rowEl = document.getElementById('retire-stepup-row');
@@ -3743,7 +3756,7 @@ function runAIDiagnosis(){
   // ── 課題分析 ──
   const issues = [];
   if(!eduOk) issues.push(`⚠️ 教育費が月${eduShort.toFixed(1)}万円不足。このまま続くと総額${Math.round(eduShort*12*4)}万円以上の準備不足になります`);
-  if(!retireOk) issues.push(`⚠️ 老後資金が月${retShort.toFixed(1)}万円不足。65歳時点で目標額を下回る可能性があります`);
+  if(!retireOk) issues.push(`⚠️ 老後資金が月${retShort.toFixed(1)}万円不足。${d.retireAge||65}歳時点で目標額を下回る可能性があります`);
   if(pctSaving < 10 && income > 0) issues.push(`⚠️ 積立率${pctSaving}%は低め。一般的には手取りの15〜20%が目安です`);
   if(age >= 45 && !retireOk) issues.push('⚠️ 45歳以降は老後資金を増やすタイムリミットが近づいています');
   if(d.numChildren >= 3 && !eduOk) issues.push('⚠️ 3人以上の教育費は重なりやすいため早めの対策が重要です');
@@ -4215,7 +4228,7 @@ async function runPremiumAIDiagnosis(){
 const STORAGE_KEY = 'lifePlanSim_private_v1';
 
 const SAVE_NUMBER_IDS = [
-  'ownerAge','monthlyIncome','spouseIncome','bonusAnnual',
+  'ownerAge','retireAge','monthlyIncome','spouseIncome','bonusAnnual',
   'eduMonthly','retireMonthly','univCostPublic','univCostPrivate','senmonCost','investReturn',
   'retireTarget','scholRate','sSchol','kSchol','aSchol','bSchol',
   'fundStartYear','fundInitial','fundMonthly','fundRate','eduInvestReturn',

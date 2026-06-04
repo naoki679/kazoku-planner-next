@@ -1319,7 +1319,8 @@ function renderProjection(){
   const children=getChildren();
   const now=new Date().getFullYear();
   const age=parseInt(s?.ownerAge)||35;
-  const retireYear=(now-age)+parseInt(s?.retireAge||65);
+  const retireAgeSet=parseInt(s?.retireAge||65);
+  const retireYear=(now-age)+retireAgeSet;
   const end=Math.max(retireYear+20,now+40);
   const rate=(s?.investReturn||3)/100;
   const pl=getKakeiboMonthly();
@@ -1383,8 +1384,8 @@ function renderProjection(){
   });
   const retData=data.find(d=>d.yr===retireYear);
   document.getElementById('projection-summary').innerHTML=[
-    ['定年時 純資産','#f0f9ff','#0891b2',retData?(retData.nw).toLocaleString():'─'],
-    ['定年時 老後資金','#f0fdf4','#10b981',retData?(retData.retire).toLocaleString():'─'],
+    [`定年時 純資産（${retireAgeSet}歳）`,'#f0f9ff','#0891b2',retData?(retData.nw).toLocaleString():'─'],
+    [`定年時 老後資金（${retireAgeSet}歳）`,'#f0fdf4','#10b981',retData?(retData.retire).toLocaleString():'─'],
     ['ピーク純資産','#fef9ec','#f59e0b',Math.max(...data.map(d=>d.nw)).toLocaleString()],
   ].map(([l,bg,col,v])=>`<div style="background:${bg};border-radius:10px;padding:12px;text-align:center;">
     <div style="font-size:.63rem;color:#94a3b8;margin-bottom:4px;">${l}</div>
