@@ -95,6 +95,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 .btn-cancel{flex:1;padding:10px;background:#f1f5f9;border:none;border-radius:10px;font-size:.8rem;cursor:pointer;font-weight:700;color:#64748b;}
 .btn-save{flex:2;padding:10px;background:var(--navy);color:#fff;border:none;border-radius:10px;font-size:.8rem;cursor:pointer;font-weight:800;}
 .annual-grid{display:grid;gap:1px;background:var(--border);border:1px solid var(--border);border-radius:12px;overflow:hidden;margin-bottom:14px;}
+@media(max-width:700px){.annual-layout{grid-template-columns:1fr!important;}}
 .annual-hdr{display:grid;grid-template-columns:60px 1fr 1fr 1fr 60px;gap:0;background:#f8fafc;font-size:.65rem;font-weight:800;color:var(--muted);padding:8px 12px;}
 .annual-row{display:grid;grid-template-columns:60px 1fr 1fr 1fr 60px;gap:0;background:var(--card);padding:9px 12px;align-items:center;}
 .annual-row:hover{background:#f8fafc;}
@@ -262,8 +263,8 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
     </div>
     <div id="annual-savings-banner" style="display:none;margin-bottom:10px;"></div>
 
-    <!-- 2カラム：左＝年間スケジュール、右＝年間特別費 -->
-    <div style="display:grid;grid-template-columns:1fr 340px;gap:14px;align-items:start;">
+    <!-- 2カラム：左＝年間スケジュール、右＝年間特別費（モバイルは1カラム） -->
+    <div style="display:grid;grid-template-columns:1fr 300px;gap:14px;align-items:start;" class="annual-layout">
       <!-- 左カラム -->
       <div>
         <div class="annual-grid" id="annual-grid"></div>
@@ -1721,11 +1722,12 @@ function renderAnnual(){
   const rows=months.map(mk=>{
     const exp=ALL_TXN.filter(t=>t.monthKey===mk&&t.type==='expense').reduce((s,t)=>s+t.amount,0);
     const recInc=ALL_TXN.filter(t=>t.monthKey===mk&&t.type==='income').reduce((s,t)=>s+t.amount,0);
-    // 記録済み収入があればそれを使用、なければ設定値（未来月はスキップ）
+    // 取引が存在する月のみ設定値収入を補完（データなし月は─表示）
     const isPast=mk<=thisMonth;
-    const baseInc=settingsMonthly>0&&isPast?settingsMonthly:0;
+    const hasTxn=ALL_TXN.some(t=>t.monthKey===mk); // 何らかの取引がある月
+    const baseInc=settingsMonthly>0&&isPast&&hasTxn?settingsMonthly:0;
     const inc=baseInc>0?(baseInc+recInc):(recInc>0?recInc:0);
-    const fromSettings=baseInc>0;
+    const fromSettings=baseInc>0&&recInc===0;
     totalInc+=inc;totalExp+=exp;
     return{mk,exp,inc,recInc,fromSettings,savings:inc-exp,rate:inc>0?Math.round((inc-exp)/inc*100):null};
   });
