@@ -5490,7 +5490,15 @@ function initFirebase(){
     fbAuth.onAuthStateChanged(user => {
       fbCurrentUser = user;
       updateFbUI(user);
-      if(user) loadFromFirestore(user.uid);
+      if(user){
+        loadFromFirestore(user.uid);
+        // ログイン直後に現在のデータもFirestoreへ送信（初回のみ）
+        setTimeout(() => syncToFirestore(false), 2000);
+      }
+    });
+    // ページを閉じる前に確実に同期
+    window.addEventListener('beforeunload', () => {
+      if(fbCurrentUser) syncToFirestore(false);
     });
   } catch(e){ console.warn('Firebase init error:', e); }
 }
@@ -5541,7 +5549,7 @@ function showFbStatus(msg){
 function scheduleSyncToFirestore(){
   if(!fbCurrentUser) return;
   clearTimeout(fbSyncTimer);
-  fbSyncTimer = setTimeout(() => syncToFirestore(false), 8000);
+  fbSyncTimer = setTimeout(() => syncToFirestore(false), 3000);
 }
 
 function syncToFirestore(manual=false){
@@ -5573,18 +5581,21 @@ function loadFromFirestore(uid){
     .then(doc => {
       if(doc.exists){
         const d = doc.data();
-        let changed = false;
-        const set = (key, val) => { if(val){ localStorage.setItem(key, val); changed = true; } };
-        set('lifePlanSim_private_v1', d.main);
-        set('lifePlanSim_v2',         d.planner);
-        set('kakeibo_v1',             d.kakeibo);
-        set('kakeibo_cards_v1',       d.kakeibo_cards);
-        set('kakeibo_budget_v1',      d.kakeibo_budget);
-        set('lifePlanSim_onboarded_v1', d.onboarded);
+        // Firestoreのデータで常に上書き（クラウドを正とする）
+        const localMain = localStorage.getItem('lifePlanSim_private_v1');
+        if(d.main) localStorage.setItem('lifePlanSim_private_v1', d.main);
+        if(d.planner) localStorage.setItem('lifePlanSim_v2', d.planner);
+        if(d.kakeibo) localStorage.setItem('kakeibo_v1', d.kakeibo);
+        if(d.kakeibo_cards) localStorage.setItem('kakeibo_cards_v1', d.kakeibo_cards);
+        if(d.kakeibo_budget) localStorage.setItem('kakeibo_budget_v1', d.kakeibo_budget);
+        if(d.onboarded) localStorage.setItem('lifePlanSim_onboarded_v1', d.onboarded);
         showFbStatus('✅ 同期済み');
-        if(changed){
-          showToast('☁️ データを同期しました！');
+        // Firestoreのデータが手元と異なれば再読込
+        if(d.main && d.main !== localMain){
+          showToast('☁️ クラウドのデータに同期しました');
           setTimeout(() => location.reload(), 1800);
+        } else {
+          showToast('✅ ログイン済み（データは最新）');
         }
       } else {
         // 初回ログイン：現在データをアップロード
