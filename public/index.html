@@ -5492,8 +5492,6 @@ function initFirebase(){
       updateFbUI(user);
       if(user){
         loadFromFirestore(user.uid);
-        // ログイン直後に現在のデータもFirestoreへ送信（初回のみ）
-        setTimeout(() => syncToFirestore(false), 2000);
       }
     });
     // ページを閉じる前に確実に同期
@@ -5575,30 +5573,34 @@ function syncToFirestore(manual=false){
 
 function loadFromFirestore(uid){
   if(!fbDb) return;
+  // このセッションで既に読み込み済みならスキップ（リロードループ防止）
+  const sessionKey = 'fb_loaded_' + uid;
+  const alreadyLoaded = sessionStorage.getItem(sessionKey);
+  if(alreadyLoaded){
+    showFbStatus('✅ 同期済み');
+    return;
+  }
   showFbStatus('⏳ 読込中...');
   fbDb.collection('users').doc(uid).collection('sync').doc('main')
     .get()
     .then(doc => {
       if(doc.exists){
         const d = doc.data();
-        // Firestoreのデータで常に上書き（クラウドを正とする）
-        const localMain = localStorage.getItem('lifePlanSim_private_v1');
-        if(d.main) localStorage.setItem('lifePlanSim_private_v1', d.main);
-        if(d.planner) localStorage.setItem('lifePlanSim_v2', d.planner);
-        if(d.kakeibo) localStorage.setItem('kakeibo_v1', d.kakeibo);
-        if(d.kakeibo_cards) localStorage.setItem('kakeibo_cards_v1', d.kakeibo_cards);
-        if(d.kakeibo_budget) localStorage.setItem('kakeibo_budget_v1', d.kakeibo_budget);
-        if(d.onboarded) localStorage.setItem('lifePlanSim_onboarded_v1', d.onboarded);
+        // Firestoreを正として常にlocalStorageへ反映
+        if(d.main        !== undefined) localStorage.setItem('lifePlanSim_private_v1',      d.main        || '');
+        if(d.planner     !== undefined) localStorage.setItem('lifePlanSim_v2',              d.planner     || '');
+        if(d.kakeibo     !== undefined) localStorage.setItem('kakeibo_v1',                  d.kakeibo     || '');
+        if(d.kakeibo_cards  !== undefined) localStorage.setItem('kakeibo_cards_v1',         d.kakeibo_cards  || '');
+        if(d.kakeibo_budget !== undefined) localStorage.setItem('kakeibo_budget_v1',        d.kakeibo_budget || '');
+        if(d.onboarded   !== undefined) localStorage.setItem('lifePlanSim_onboarded_v1',    d.onboarded   || '');
+        // ロード済みフラグをセット（リロード後もセッション内では再ロードしない）
+        sessionStorage.setItem(sessionKey, '1');
         showFbStatus('✅ 同期済み');
-        // Firestoreのデータが手元と異なれば再読込
-        if(d.main && d.main !== localMain){
-          showToast('☁️ クラウドのデータに同期しました');
-          setTimeout(() => location.reload(), 1800);
-        } else {
-          showToast('✅ ログイン済み（データは最新）');
-        }
+        showToast('☁️ クラウドから読み込みました。リロードします…');
+        setTimeout(() => location.reload(), 1800);
       } else {
-        // 初回ログイン：現在データをアップロード
+        // Firestoreにデータなし → 現在のローカルデータをアップロード
+        sessionStorage.setItem(sessionKey, '1');
         syncToFirestore(false);
         showFbStatus('✅ 同期済み');
         showToast('☁️ データをクラウドに保存しました');
