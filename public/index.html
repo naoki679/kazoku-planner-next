@@ -5573,40 +5573,95 @@ function syncToFirestore(manual=false){
 
 function loadFromFirestore(uid){
   if(!fbDb) return;
-  // このセッションで既に読み込み済みならスキップ（リロードループ防止）
   const sessionKey = 'fb_loaded_' + uid;
-  const alreadyLoaded = sessionStorage.getItem(sessionKey);
-  if(alreadyLoaded){
-    showFbStatus('✅ 同期済み');
-    return;
-  }
+  if(sessionStorage.getItem(sessionKey)){ showFbStatus('✅ 同期済み'); return; }
   showFbStatus('⏳ 読込中...');
   fbDb.collection('users').doc(uid).collection('sync').doc('main')
     .get()
     .then(doc => {
-      if(doc.exists){
-        const d = doc.data();
-        // Firestoreを正として常にlocalStorageへ反映
-        if(d.main        !== undefined) localStorage.setItem('lifePlanSim_private_v1',      d.main        || '');
-        if(d.planner     !== undefined) localStorage.setItem('lifePlanSim_v2',              d.planner     || '');
-        if(d.kakeibo     !== undefined) localStorage.setItem('kakeibo_v1',                  d.kakeibo     || '');
-        if(d.kakeibo_cards  !== undefined) localStorage.setItem('kakeibo_cards_v1',         d.kakeibo_cards  || '');
-        if(d.kakeibo_budget !== undefined) localStorage.setItem('kakeibo_budget_v1',        d.kakeibo_budget || '');
-        if(d.onboarded   !== undefined) localStorage.setItem('lifePlanSim_onboarded_v1',    d.onboarded   || '');
-        // ロード済みフラグをセット（リロード後もセッション内では再ロードしない）
-        sessionStorage.setItem(sessionKey, '1');
-        showFbStatus('✅ 同期済み');
-        showToast('☁️ クラウドから読み込みました。リロードします…');
-        setTimeout(() => location.reload(), 1800);
+      sessionStorage.setItem(sessionKey, '1');
+      if(doc.exists && doc.data().main){
+        // クラウドにデータあり → 選択ダイアログを表示
+        showFbChoiceDialog(doc.data());
       } else {
-        // Firestoreにデータなし → 現在のローカルデータをアップロード
-        sessionStorage.setItem(sessionKey, '1');
+        // クラウドにデータなし → 現在のデータをアップロード
         syncToFirestore(false);
         showFbStatus('✅ 同期済み');
-        showToast('☁️ データをクラウドに保存しました');
+        showToast('☁️ この端末のデータをクラウドに保存しました');
       }
     })
     .catch(e => { console.error('Load error:', e); showFbStatus('❌ 読込失敗'); });
+}
+
+function showFbChoiceDialog(cloudData){
+  // 既存ダイアログがあれば削除
+  const existing = document.getElementById('fb-choice-modal');
+  if(existing) existing.remove();
+
+  const cloudDate = cloudData.updatedAt?.toDate?.()
+    ? cloudData.updatedAt.toDate().toLocaleString('ja-JP')
+    : '不明';
+
+  const modal = document.createElement('div');
+  modal.id = 'fb-choice-modal';
+  modal.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:99999;display:flex;align-items:center;justify-content:center;padding:20px;box-sizing:border-box;';
+  modal.innerHTML = `
+    <div style="background:#fff;border-radius:20px;padding:28px 24px;max-width:380px;width:100%;box-shadow:0 8px 40px rgba(0,0,0,.25);">
+      <div style="font-size:1.1rem;font-weight:900;color:#1a2b4a;margin-bottom:6px;">☁️ データの選択</div>
+      <div style="font-size:.75rem;color:#64748b;margin-bottom:20px;line-height:1.6;">クラウドと端末、どちらのデータを使いますか？</div>
+
+      <button onclick="fbUseCloud()" style="width:100%;padding:14px 16px;margin-bottom:10px;background:linear-gradient(135deg,#2563eb,#1a2b4a);border:none;border-radius:12px;color:#fff;font-size:.88rem;font-weight:800;cursor:pointer;text-align:left;display:flex;align-items:center;gap:12px;touch-action:manipulation;">
+        <span style="font-size:1.4rem;">☁️</span>
+        <div>
+          <div>クラウドのデータを使う</div>
+          <div style="font-size:.68rem;font-weight:400;opacity:.8;margin-top:2px;">最終保存: ${cloudDate}</div>
+        </div>
+      </button>
+
+      <button onclick="fbUseLocal()" style="width:100%;padding:14px 16px;background:#f1f5f9;border:1.5px solid #e2e8f0;border-radius:12px;color:#1a2b4a;font-size:.88rem;font-weight:800;cursor:pointer;text-align:left;display:flex;align-items:center;gap:12px;touch-action:manipulation;">
+        <span style="font-size:1.4rem;">📱</span>
+        <div>
+          <div>この端末のデータをクラウドに保存</div>
+          <div style="font-size:.68rem;font-weight:400;color:#64748b;margin-top:2px;">現在の入力内容でクラウドを上書き</div>
+        </div>
+      </button>
+    </div>
+  `;
+  document.body.appendChild(modal);
+  // bodyスクロール停止
+  document.body.style.overflow = 'hidden';
+}
+
+let _fbCloudData = null;
+function showFbChoiceDialogWithData(d){ _fbCloudData = d; }
+
+// クラウドデータを使う
+function fbUseCloud(){
+  const modal = document.getElementById('fb-choice-modal');
+  if(modal){ modal.remove(); document.body.style.overflow = ''; }
+  // モーダルを閉じる前にcloudDataを取得（DOMから）
+  // ※ showFbChoiceDialog内でdocDataをグローバルに保持する
+  fbDb.collection('users').doc(fbCurrentUser.uid).collection('sync').doc('main')
+    .get().then(doc => {
+      if(!doc.exists) return;
+      const d = doc.data();
+      localStorage.setItem('lifePlanSim_private_v1',   d.main         || '');
+      localStorage.setItem('lifePlanSim_v2',           d.planner      || '');
+      localStorage.setItem('kakeibo_v1',               d.kakeibo      || '');
+      localStorage.setItem('kakeibo_cards_v1',         d.kakeibo_cards || '');
+      localStorage.setItem('kakeibo_budget_v1',        d.kakeibo_budget|| '');
+      localStorage.setItem('lifePlanSim_onboarded_v1', d.onboarded    || '');
+      showFbStatus('✅ 同期済み');
+      showToast('☁️ クラウドのデータで更新します…');
+      setTimeout(() => location.reload(), 1500);
+    });
+}
+
+// この端末のデータをクラウドへ
+function fbUseLocal(){
+  const modal = document.getElementById('fb-choice-modal');
+  if(modal){ modal.remove(); document.body.style.overflow = ''; }
+  syncToFirestore(true);
 }
 
 // DOMContentLoaded後に初期化
