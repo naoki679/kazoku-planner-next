@@ -437,6 +437,102 @@ input[type=range]{flex:1;height:4px;accent-color:var(--blue);cursor:pointer;}
 
   <div class="divider"></div>
 
+  <!-- 進路・高校進路・学校（塾・予備校） -->
+  <div class="sb-section">
+    <div class="sb-title">🎓 進路・高校進路</div>
+
+    <!-- 大学・専門学校 進路 -->
+    <div class="sb-field">
+      <div style="font-size:.7rem;font-weight:700;color:var(--muted);margin-bottom:6px;">🎓 進路（大学・専門）</div>
+      <div style="display:grid;grid-template-columns:auto 1fr;gap:6px 8px;align-items:center;font-size:.75rem;">
+        <div id="type-row-s" style="display:contents;">
+          <span style="color:#3b82f6;font-weight:700;" id="type-name-s">長男</span>
+          <select class="sb-select" id="sType" onchange="recalc()" style="padding:4px 6px;">
+            <option value="private">大学・私立</option><option value="public">大学・国公立</option>
+            <option value="senmon2">専門学校(2年)</option><option value="senmon3">専門学校(3年)</option>
+          </select>
+        </div>
+        <div id="type-row-k" style="display:contents;">
+          <span style="color:#8b5cf6;font-weight:700;" id="type-name-k">次男</span>
+          <select class="sb-select" id="kType" onchange="recalc()" style="padding:4px 6px;">
+            <option value="private">大学・私立</option><option value="public">大学・国公立</option>
+            <option value="senmon2">専門学校(2年)</option><option value="senmon3">専門学校(3年)</option>
+          </select>
+        </div>
+        <div id="type-row-a" style="display:contents;">
+          <span style="color:#10b981;font-weight:700;" id="type-name-a">三男</span>
+          <select class="sb-select" id="aType" onchange="recalc()" style="padding:4px 6px;">
+            <option value="private">大学・私立</option><option value="public">大学・国公立</option>
+            <option value="senmon2">専門学校(2年)</option><option value="senmon3">専門学校(3年)</option>
+          </select>
+        </div>
+        <div id="type-row-b" style="display:contents;">
+          <span style="color:#f59e0b;font-weight:700;" id="type-name-b">長女</span>
+          <select class="sb-select" id="bType" onchange="recalc()" style="padding:4px 6px;">
+            <option value="private">大学・私立</option><option value="public">大学・国公立</option>
+            <option value="senmon2">専門学校(2年)</option><option value="senmon3">専門学校(3年)</option>
+          </select>
+        </div>
+      </div>
+    </div>
+
+    <!-- 高校進路 -->
+    <div class="sb-field" style="margin-top:10px;">
+      <div style="font-size:.7rem;font-weight:700;color:var(--muted);margin-bottom:5px;">🏫 高校進路</div>
+      <div style="font-size:.61rem;color:var(--muted);margin-bottom:6px;line-height:1.5;background:#fff7ed;padding:5px 8px;border-radius:6px;">
+        📊 令和5年度文科省調査（授業料は就学支援金で実質0円）<br>
+        <table style="width:100%;border-collapse:collapse;margin-top:3px;">
+          <tr><td style="color:#64748b;padding:1px 0;">公立 ベース</td><td style="text-align:right;font-weight:700;">約30万/年×3年＝90万</td></tr>
+          <tr><td style="color:#64748b;padding:1px 0;">公立 ＋塾あり</td><td style="text-align:right;font-weight:700;color:#b45309;">+25万/年×3年＝+75万</td></tr>
+          <tr><td style="color:#64748b;padding:1px 0;">私立 ベース</td><td style="text-align:right;font-weight:700;">約71万/年×3年＝213万</td></tr>
+          <tr><td style="color:#64748b;padding:1px 0;">私立 ＋塾あり</td><td style="text-align:right;font-weight:700;color:#b45309;">+35万/年×3年＝+105万</td></tr>
+        </table>
+      </div>
+      <div style="font-size:.63rem;color:#64748b;margin-bottom:5px;font-weight:600;">学校 ／ 塾・予備校</div>
+      <div style="display:grid;grid-template-columns:auto 1fr auto;gap:5px 6px;align-items:center;font-size:.75rem;">
+        <div id="hs-row-s" style="display:contents;">
+          <span style="color:#3b82f6;font-weight:700;" id="hs-name-s">長男</span>
+          <select class="sb-select" id="sHsType" onchange="recalc()" style="padding:4px 5px;font-size:.72rem;">
+            <option value="public">公立</option><option value="private">私立</option><option value="none">なし</option>
+          </select>
+          <label class="toggle" style="transform:scale(0.82);transform-origin:right;" title="塾・予備校あり">
+            <input type="checkbox" id="sHsJuku" checked onchange="recalc()"><span class="toggle-slider"></span>
+          </label>
+        </div>
+        <div id="hs-row-k" style="display:contents;">
+          <span style="color:#8b5cf6;font-weight:700;" id="hs-name-k">次男</span>
+          <select class="sb-select" id="kHsType" onchange="recalc()" style="padding:4px 5px;font-size:.72rem;">
+            <option value="public">公立</option><option value="private">私立</option><option value="none">なし</option>
+          </select>
+          <label class="toggle" style="transform:scale(0.82);transform-origin:right;" title="塾・予備校あり">
+            <input type="checkbox" id="kHsJuku" checked onchange="recalc()"><span class="toggle-slider"></span>
+          </label>
+        </div>
+        <div id="hs-row-a" style="display:contents;">
+          <span style="color:#10b981;font-weight:700;" id="hs-name-a">三男</span>
+          <select class="sb-select" id="aHsType" onchange="recalc()" style="padding:4px 5px;font-size:.72rem;">
+            <option value="public">公立</option><option value="private">私立</option><option value="none">なし</option>
+          </select>
+          <label class="toggle" style="transform:scale(0.82);transform-origin:right;" title="塾・予備校あり">
+            <input type="checkbox" id="aHsJuku" checked onchange="recalc()"><span class="toggle-slider"></span>
+          </label>
+        </div>
+        <div id="hs-row-b" style="display:contents;">
+          <span style="color:#f59e0b;font-weight:700;" id="hs-name-b">長女</span>
+          <select class="sb-select" id="bHsType" onchange="recalc()" style="padding:4px 5px;font-size:.72rem;">
+            <option value="public">公立</option><option value="private">私立</option><option value="none">なし</option>
+          </select>
+          <label class="toggle" style="transform:scale(0.82);transform-origin:right;" title="塾・予備校あり">
+            <input type="checkbox" id="bHsJuku" checked onchange="recalc()"><span class="toggle-slider"></span>
+          </label>
+        </div>
+      </div>
+      <div style="font-size:.6rem;color:#94a3b8;margin-top:5px;">🔴トグル＝塾・予備校（オフで塾なし）</div>
+    </div>
+  </div>
+
+  <div class="divider"></div>
+
   <!-- 奨学金 -->
   <div class="sb-section">
     <div class="sb-title">📜 奨学金</div>
@@ -645,15 +741,14 @@ input[type=range]{flex:1;height:4px;accent-color:var(--blue);cursor:pointer;}
     <div class="sb-title">⚙️ 詳細設定</div>
     <div class="sb-field">
       <div class="sb-label">老後目標 <span class="val-badge" id="badge-retire-target">65歳・2000万円</span></div>
-      <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;">
-        <div class="num-row" style="flex:1;min-width:0;">
+      <div style="display:flex;align-items:center;gap:4px;width:100%;">
+        <div class="num-row" style="flex:none;">
           <button class="num-btn" onclick="adj('retireAge',-1)">−</button>
-          <input type="number" id="retireAge" value="65" min="50" max="80" step="1" oninput="recalc()" style="width:46px;">
+          <input type="number" id="retireAge" value="65" min="50" max="80" step="1" oninput="recalc()" style="width:40px;">
           <button class="num-btn" onclick="adj('retireAge',1)">＋</button>
-          <span class="input-unit">歳</span>
+          <span class="input-unit">歳まで</span>
         </div>
-        <span style="font-size:.7rem;color:var(--muted);">まで</span>
-        <div class="num-row" style="flex:2;min-width:0;">
+        <div class="num-row" style="flex:1;min-width:0;">
           <button class="num-btn" onclick="adj('retireTarget',-100)">−</button>
           <input type="number" id="retireTarget" value="2000" min="500" max="5000" step="100" oninput="recalc()">
           <button class="num-btn" onclick="adj('retireTarget',100)">＋</button>
@@ -667,106 +762,6 @@ input[type=range]{flex:1;height:4px;accent-color:var(--blue);cursor:pointer;}
         <input type="range" id="investReturn" min="0" max="10" step="0.5" value="5" oninput="recalc()">
         <div class="slider-val" id="badge-return">4.0%</div>
       </div>
-    </div>
-    <!-- Per-child type selects (hidden but functional) -->
-    <div style="margin-top:10px;">
-      <div style="font-size:.7rem;font-weight:700;color:var(--muted);margin-bottom:6px;">🎓 進路</div>
-      <div style="display:grid;grid-template-columns:auto 1fr;gap:6px 8px;align-items:center;font-size:.75rem;">
-        <div id="type-row-s" style="display:contents;">
-          <span style="color:#3b82f6;font-weight:700;" id="type-name-s">長男</span>
-          <select class="sb-select" id="sType" onchange="recalc()" style="padding:4px 6px;">
-            <option value="private">大学・私立</option><option value="public">大学・国公立</option>
-            <option value="senmon2">専門学校(2年)</option><option value="senmon3">専門学校(3年)</option>
-          </select>
-        </div>
-        <div id="type-row-k" style="display:contents;">
-          <span style="color:#8b5cf6;font-weight:700;" id="type-name-k">次男</span>
-          <select class="sb-select" id="kType" onchange="recalc()" style="padding:4px 6px;">
-            <option value="private">大学・私立</option><option value="public">大学・国公立</option>
-            <option value="senmon2">専門学校(2年)</option><option value="senmon3">専門学校(3年)</option>
-          </select>
-        </div>
-        <div id="type-row-a" style="display:contents;">
-          <span style="color:#10b981;font-weight:700;" id="type-name-a">三男</span>
-          <select class="sb-select" id="aType" onchange="recalc()" style="padding:4px 6px;">
-            <option value="private">大学・私立</option><option value="public">大学・国公立</option>
-            <option value="senmon2">専門学校(2年)</option><option value="senmon3">専門学校(3年)</option>
-          </select>
-        </div>
-        <div id="type-row-b" style="display:contents;">
-          <span style="color:#f59e0b;font-weight:700;" id="type-name-b">長女</span>
-          <select class="sb-select" id="bType" onchange="recalc()" style="padding:4px 6px;">
-            <option value="private">大学・私立</option><option value="public">大学・国公立</option>
-            <option value="senmon2">専門学校(2年)</option><option value="senmon3">専門学校(3年)</option>
-          </select>
-        </div>
-      </div>
-    </div>
-
-    <!-- 高校進路設定 -->
-    <div style="margin-top:14px;">
-      <div style="font-size:.7rem;font-weight:700;color:var(--muted);margin-bottom:5px;">🏫 高校進路</div>
-      <div style="font-size:.61rem;color:var(--muted);margin-bottom:6px;line-height:1.5;background:#fff7ed;padding:5px 8px;border-radius:6px;">
-        📊 令和5年度文科省調査（授業料は就学支援金で実質0円）<br>
-        <table style="width:100%;border-collapse:collapse;margin-top:3px;">
-          <tr><td style="color:#64748b;padding:1px 0;">公立 ベース</td><td style="text-align:right;font-weight:700;">約30万/年×3年＝90万</td></tr>
-          <tr><td style="color:#64748b;padding:1px 0;">公立 ＋塾あり</td><td style="text-align:right;font-weight:700;color:#b45309;">+25万/年×3年＝+75万</td></tr>
-          <tr><td style="color:#64748b;padding:1px 0;">私立 ベース</td><td style="text-align:right;font-weight:700;">約71万/年×3年＝213万</td></tr>
-          <tr><td style="color:#64748b;padding:1px 0;">私立 ＋塾あり</td><td style="text-align:right;font-weight:700;color:#b45309;">+35万/年×3年＝+105万</td></tr>
-        </table>
-      </div>
-      <div style="font-size:.63rem;color:#64748b;margin-bottom:5px;font-weight:600;">学校 ／ 塾・予備校</div>
-      <div style="display:grid;grid-template-columns:auto 1fr auto;gap:5px 6px;align-items:center;font-size:.75rem;">
-        <div id="hs-row-s" style="display:contents;">
-          <span style="color:#3b82f6;font-weight:700;" id="hs-name-s">長男</span>
-          <select class="sb-select" id="sHsType" onchange="recalc()" style="padding:4px 5px;font-size:.72rem;">
-            <option value="public">公立</option>
-            <option value="private">私立</option>
-            <option value="none">なし</option>
-          </select>
-          <label class="toggle" style="transform:scale(0.82);transform-origin:right;" title="塾・予備校あり">
-            <input type="checkbox" id="sHsJuku" checked onchange="recalc()">
-            <span class="toggle-slider"></span>
-          </label>
-        </div>
-        <div id="hs-row-k" style="display:contents;">
-          <span style="color:#8b5cf6;font-weight:700;" id="hs-name-k">次男</span>
-          <select class="sb-select" id="kHsType" onchange="recalc()" style="padding:4px 5px;font-size:.72rem;">
-            <option value="public">公立</option>
-            <option value="private">私立</option>
-            <option value="none">なし</option>
-          </select>
-          <label class="toggle" style="transform:scale(0.82);transform-origin:right;" title="塾・予備校あり">
-            <input type="checkbox" id="kHsJuku" checked onchange="recalc()">
-            <span class="toggle-slider"></span>
-          </label>
-        </div>
-        <div id="hs-row-a" style="display:contents;">
-          <span style="color:#10b981;font-weight:700;" id="hs-name-a">三男</span>
-          <select class="sb-select" id="aHsType" onchange="recalc()" style="padding:4px 5px;font-size:.72rem;">
-            <option value="public">公立</option>
-            <option value="private">私立</option>
-            <option value="none">なし</option>
-          </select>
-          <label class="toggle" style="transform:scale(0.82);transform-origin:right;" title="塾・予備校あり">
-            <input type="checkbox" id="aHsJuku" checked onchange="recalc()">
-            <span class="toggle-slider"></span>
-          </label>
-        </div>
-        <div id="hs-row-b" style="display:contents;">
-          <span style="color:#f59e0b;font-weight:700;" id="hs-name-b">長女</span>
-          <select class="sb-select" id="bHsType" onchange="recalc()" style="padding:4px 5px;font-size:.72rem;">
-            <option value="public">公立</option>
-            <option value="private">私立</option>
-            <option value="none">なし</option>
-          </select>
-          <label class="toggle" style="transform:scale(0.82);transform-origin:right;" title="塾・予備校あり">
-            <input type="checkbox" id="bHsJuku" checked onchange="recalc()">
-            <span class="toggle-slider"></span>
-          </label>
-        </div>
-      </div>
-      <div style="font-size:.6rem;color:#94a3b8;margin-top:5px;">🔴トグル＝塾・予備校（オフで塾なし）</div>
     </div>
   </div>
 
