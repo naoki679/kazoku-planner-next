@@ -4339,7 +4339,7 @@ function closeWelcomeAndOpenCfg(){ closeWelcome(); setTimeout(openCfg,200); }
 // ============================================================
 const OB_KEY   = 'lifePlanSim_onboarded_v1';
 let OB_STEP    = 1;
-const OB_TOTAL = 8;
+const OB_TOTAL = 10;
 let OB_SPOUSE  = false; // 配偶者有無トラッキング
 // 子供の色（入力行のアクセントカラー）
 const OB_COLORS = ['#2563eb','#16a34a','#9333ea','#ea580c'];
@@ -4383,6 +4383,10 @@ function finishOnboarding(){
   // すべての入力を確実に反映してから完了
   obApplyFamily();
   obApplyIncome();
+  obApplyInitialSavings();
+  obApplySchol();
+  obApplyEduInvest();
+  obApplyRetireGoal();
   obApplySavings();
   localStorage.setItem(OB_KEY,'1');
   localStorage.setItem(WELCOME_KEY,'1');
@@ -4397,12 +4401,16 @@ function checkFirstVisit(){
 
 // ── ステップ間ナビゲーション ──
 function obNext(){
-  if(OB_STEP===1) obApplyIncome(); // 年齢・配偶者をSTEP1→2でも即反映
-  if(OB_STEP===2) obApplyFamily();
-  if(OB_STEP===3) obApplyIncome();
-  if(OB_STEP===4) obApplySavings();
-  if(OB_STEP===6){
-    // Step7サマリーを更新
+  if(OB_STEP===1){ obApplyIncome(); }
+  if(OB_STEP===2){ obApplyFamily(); renderObStep4Rows(); }
+  if(OB_STEP===3){ obApplyIncome(); }
+  if(OB_STEP===4){ obApplyInitialSavings(); }
+  if(OB_STEP===5){ obApplySchol(); }
+  if(OB_STEP===6){ obApplyEduInvest(); renderObChildInvestRows(); }
+  if(OB_STEP===7){ obApplyRetireGoal(); }
+  if(OB_STEP===8){ obApplySavings(); }
+  if(OB_STEP===9){
+    // Step10サマリーを更新
     setTimeout(()=>{
       const ne=document.getElementById('ob-summary-numch');
       const me=document.getElementById('ob-summary-monthly');
@@ -4491,6 +4499,117 @@ function obApplySavings(){
   recalc();
 }
 
+// ── Step4: 初期貯蓄・保険・投資現金化 ──
+function renderObStep4Rows(){
+  const n = CONFIG.numChildren;
+  const COLORS = ['#3b82f6','#8b5cf6','#10b981','#f59e0b'];
+  const NAMES = ['第一子','第二子','第三子','第四子'];
+  let insHtml='', sbiHtml='';
+  for(let i=0;i<n;i++){
+    const ch = CONFIG.children[i];
+    const nm = ch.name || NAMES[i];
+    const col = COLORS[i];
+    const defYear = ch.univYear || (new Date().getFullYear()+10);
+    insHtml += `<div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;">
+      <span style="color:${col};font-weight:700;font-size:.73rem;min-width:36px;">${nm}</span>
+      <input id="ob-s4-ins-${i}" type="number" value="${ch.insurance||0}" min="0" placeholder="0"
+        style="width:72px;padding:6px 8px;border:1.5px solid #bfdbfe;border-radius:8px;font-size:.85rem;font-weight:700;text-align:center;">
+      <span style="font-size:.7rem;color:#64748b;">万円　満期年:</span>
+      <input id="ob-s4-insy-${i}" type="number" value="${ch.insYear||''}" min="2025" max="2055" placeholder="${defYear}"
+        style="width:68px;padding:6px 8px;border:1.5px solid #bfdbfe;border-radius:8px;font-size:.85rem;font-weight:700;text-align:center;">
+      <span style="font-size:.7rem;color:#64748b;">年</span>
+    </div>`;
+    sbiHtml += `<div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;">
+      <span style="color:${col};font-weight:700;font-size:.73rem;min-width:36px;">${nm}</span>
+      <input id="ob-s4-sbi-${i}" type="number" value="${ch.sbi||0}" min="0" placeholder="0"
+        style="width:72px;padding:6px 8px;border:1.5px solid #e9d5ff;border-radius:8px;font-size:.85rem;font-weight:700;text-align:center;">
+      <span style="font-size:.7rem;color:#64748b;">万円　現金化年:</span>
+      <input id="ob-s4-sbiy-${i}" type="number" value="${ch.sbiYear||''}" min="2025" max="2055" placeholder="${defYear}"
+        style="width:68px;padding:6px 8px;border:1.5px solid #e9d5ff;border-radius:8px;font-size:.85rem;font-weight:700;text-align:center;">
+      <span style="font-size:.7rem;color:#64748b;">年</span>
+    </div>`;
+  }
+  const insEl = document.getElementById('ob-s4-ins-rows');
+  const sbiEl = document.getElementById('ob-s4-sbi-rows');
+  if(insEl) insEl.innerHTML = insHtml;
+  if(sbiEl) sbiEl.innerHTML = sbiHtml;
+}
+function obApplyInitialSavings(){
+  const ret = parseFloat(document.getElementById('ob-s4-retire-curr')?.value);
+  if(!isNaN(ret) && ret >= 0){ CONFIG.retireCurrent = ret; RETIRE_CURRENT = ret; }
+  for(let i=0; i<CONFIG.numChildren; i++){
+    const ins  = parseFloat(document.getElementById('ob-s4-ins-'+i)?.value);
+    const insY = parseInt(document.getElementById('ob-s4-insy-'+i)?.value);
+    const sbi  = parseFloat(document.getElementById('ob-s4-sbi-'+i)?.value);
+    const sbiY = parseInt(document.getElementById('ob-s4-sbiy-'+i)?.value);
+    if(!isNaN(ins))              CONFIG.children[i].insurance = ins;
+    if(!isNaN(insY) && insY > 2020) CONFIG.children[i].insYear = insY;
+    if(!isNaN(sbi))              CONFIG.children[i].sbi = sbi;
+    if(!isNaN(sbiY) && sbiY > 2020) CONFIG.children[i].sbiYear = sbiY;
+  }
+  recalc();
+}
+
+// ── Step5: 奨学金 ──
+function obApplySchol(){
+  const obOn   = document.getElementById('ob-schol-on')?.checked ?? false;
+  const obType = document.getElementById('ob-schol-type')?.value ?? 'type2';
+  const scholOnEl   = document.getElementById('scholOn');
+  const scholTypeEl = document.getElementById('scholType');
+  if(scholOnEl)   scholOnEl.checked = obOn;
+  if(scholTypeEl) scholTypeEl.value = obType;
+  recalc();
+}
+
+// ── Step6: 教育資金投資・ファンド ──
+function renderObChildInvestRows(){
+  const n = CONFIG.numChildren;
+  const COLORS = ['#3b82f6','#8b5cf6','#10b981','#f59e0b'];
+  const IDS    = ['s','k','a','b'];
+  let html = '';
+  for(let i=0;i<n;i++){
+    const ch = CONFIG.children[i];
+    const nm = ch.name || ['第一子','第二子','第三子','第四子'][i];
+    html += `<div style="display:flex;align-items:center;justify-content:space-between;">
+      <span style="color:${COLORS[i]};font-weight:700;font-size:.8rem;">${nm}</span>
+      <label class="toggle" style="transform:scale(0.9);transform-origin:right;">
+        <input type="checkbox" id="ob-invest-${IDS[i]}" checked>
+        <span class="toggle-slider"></span>
+      </label>
+    </div>`;
+  }
+  const el = document.getElementById('ob-child-invest-rows');
+  if(el) el.innerHTML = html;
+}
+function obApplyEduInvest(){
+  const obOn  = document.getElementById('ob-edu-invest-on')?.checked ?? false;
+  const IDS   = ['s','k','a','b'];
+  const eduEl = document.getElementById('eduInvestOn');
+  if(eduEl) eduEl.checked = obOn;
+  if(obOn){
+    IDS.forEach(id => {
+      const el   = document.getElementById(id+'Invest');
+      const obEl = document.getElementById('ob-invest-'+id);
+      if(el && obEl) el.checked = obEl.checked;
+    });
+  }
+  const obFund  = document.getElementById('ob-fund-on')?.checked ?? false;
+  const fundEl  = document.getElementById('fundOn');
+  if(fundEl) fundEl.checked = obFund;
+  recalc();
+}
+
+// ── Step7: 老後目標 ──
+function obApplyRetireGoal(){
+  const age    = parseInt(document.getElementById('ob-retire-age')?.value);
+  const target = parseInt(document.getElementById('ob-retire-target')?.value);
+  const ageEl    = document.getElementById('retireAge');
+  const targetEl = document.getElementById('retireTarget');
+  if(!isNaN(age) && age >= 50 && age <= 80 && ageEl) ageEl.value = age;
+  if(!isNaN(target) && target >= 500 && targetEl) targetEl.value = target;
+  recalc();
+}
+
 // ── UI描画 ──
 function renderObStep(){
   // プログレスバー
@@ -4525,7 +4644,9 @@ function renderObStep(){
   // Step 2: 家族入力行の表示制御
   if(OB_STEP===2) renderObFamilyRows();
   // Step 4: スライダー初期値
-  if(OB_STEP===4) initObSavingsSliders();
+  if(OB_STEP===4) renderObStep4Rows();
+  if(OB_STEP===6) renderObChildInvestRows();
+  if(OB_STEP===8) initObSavingsSliders();
 }
 
 function renderObFamilyRows(){
@@ -4834,7 +4955,7 @@ window.addEventListener('DOMContentLoaded', () => setTimeout(waitAndInit, 50));
   <div style="flex-shrink:0;background:linear-gradient(135deg,#1a2b4a,#2563eb);padding:16px 24px 12px;">
     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
       <div style="font-size:.72rem;color:rgba(255,255,255,.7);">初期設定ウィザード</div>
-      <div id="ob-step-label" style="font-size:.72rem;color:rgba(255,255,255,.7);">STEP 1 / 7</div>
+      <div id="ob-step-label" style="font-size:.72rem;color:rgba(255,255,255,.7);">STEP 1 / 10</div>
     </div>
     <div style="background:rgba(255,255,255,.2);border-radius:10px;height:5px;overflow:hidden;">
       <div id="ob-progress" style="height:100%;background:#fff;border-radius:10px;transition:width .4s ease;width:14%;"></div>
@@ -5037,20 +5158,164 @@ window.addEventListener('DOMContentLoaded', () => setTimeout(waitAndInit, 50));
             <span style="font-size:.84rem;color:#475569;">万円/年</span>
           </div>
         </div>
-        <div>
-          <label style="font-size:.74rem;font-weight:700;color:#475569;display:block;margin-bottom:5px;">老後資金の現在の貯蓄額</label>
-          <div style="display:flex;align-items:center;gap:8px;">
-            <input id="ob-retire-curr" type="number" value="0" min="0" max="5000" style="width:90px;padding:10px 12px;border:1.5px solid #e2e8f0;border-radius:10px;font-size:1rem;font-weight:700;text-align:center;">
-            <span style="font-size:.84rem;color:#475569;">万円</span>
-          </div>
-        </div>
         <div style="background:#f0fdf4;border-radius:10px;padding:12px 14px;font-size:.72rem;color:#166534;">
           &#x1F4A1; ボーナスは老後積立の追加分として計算に使われます。0でもOKです。
         </div>
       </div>
     </div>
 
-    <div id="ob-step-4" style="display:none;padding:24px 28px 20px;">
+
+    <!-- ===== STEP 4: 現在の貯蓄・保険・投資 ===== -->
+    <div id="ob-step-4" style="display:none;padding:22px 24px 18px;">
+      <div style="margin-bottom:14px;">
+        <div style="font-size:1rem;font-weight:900;color:#1a2b4a;margin-bottom:4px;">💰 現在の貯蓄・保険・投資を教えてください</div>
+        <div style="font-size:.75rem;color:#64748b;line-height:1.6;">既に準備している資金を入力することで、より正確なシミュレーションができます。わからなければ0のままでOKです。</div>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:14px;">
+        <!-- 老後資金の現在の貯蓄 -->
+        <div style="background:#f0fdf4;border-radius:12px;padding:12px 14px;border-left:3px solid #16a34a;">
+          <div style="font-size:.76rem;font-weight:800;color:#14532d;margin-bottom:6px;">🏦 老後資金の現在の貯蓄額</div>
+          <div style="font-size:.67rem;color:#166534;margin-bottom:8px;line-height:1.5;">iDeCoや老後用の積立・貯蓄の合計額を入力してください。</div>
+          <div style="display:flex;align-items:center;gap:8px;">
+            <input id="ob-s4-retire-curr" type="number" value="0" min="0" max="5000" style="width:90px;padding:9px 12px;border:1.5px solid #bbf7d0;border-radius:10px;font-size:1rem;font-weight:700;text-align:center;">
+            <span style="font-size:.84rem;color:#475569;">万円</span>
+          </div>
+        </div>
+        <!-- 教育資金用保険の解約金 -->
+        <div style="background:#eff6ff;border-radius:12px;padding:12px 14px;border-left:3px solid #2563eb;">
+          <div style="font-size:.76rem;font-weight:800;color:#1d4ed8;margin-bottom:5px;">🔔 教育資金用保険の解約金（学資保険等）</div>
+          <div style="font-size:.67rem;color:#3b82f6;margin-bottom:8px;line-height:1.5;">満期を迎えた年に一括で教育費に充てられます。なければ0のままでOK。</div>
+          <div id="ob-s4-ins-rows" style="display:flex;flex-direction:column;gap:8px;"></div>
+        </div>
+        <!-- 教育資金用の投資現金化 -->
+        <div style="background:#fdf4ff;border-radius:12px;padding:12px 14px;border-left:3px solid #9333ea;">
+          <div style="font-size:.76rem;font-weight:800;color:#6b21a8;margin-bottom:5px;">📈 教育資金用の投資現金化（SBI一時金等）</div>
+          <div style="font-size:.67rem;color:#9333ea;margin-bottom:8px;line-height:1.5;">投資信託などを特定の年に現金化して教育費に充てる予定がある場合に入力。なければ0のままでOK。</div>
+          <div id="ob-s4-sbi-rows" style="display:flex;flex-direction:column;gap:8px;"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ===== STEP 5: 奨学金 ===== -->
+    <div id="ob-step-5" style="display:none;padding:22px 24px 18px;">
+      <div style="margin-bottom:14px;">
+        <div style="font-size:1rem;font-weight:900;color:#1a2b4a;margin-bottom:4px;">📜 奨学金の利用を検討しますか？</div>
+        <div style="font-size:.75rem;color:#64748b;line-height:1.6;">奨学金を使うと月々の積立負担を減らせます。後からでも変更できます。</div>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:12px;">
+        <!-- 説明 -->
+        <div style="display:flex;flex-direction:column;gap:7px;">
+          <div style="display:flex;gap:10px;align-items:flex-start;background:#fef9c3;border-radius:10px;padding:9px 12px;">
+            <span style="font-size:.95rem;">🎁</span>
+            <div><div style="font-size:.76rem;font-weight:800;color:#92400e;margin-bottom:1px;">給付型（返済不要）</div><div style="font-size:.67rem;color:#78350f;line-height:1.5;">住民税非課税世帯等が対象。返済不要なので最もお得。</div></div>
+          </div>
+          <div style="display:flex;gap:10px;align-items:flex-start;background:#f0fdf4;border-radius:10px;padding:9px 12px;">
+            <span style="font-size:.95rem;">✅</span>
+            <div><div style="font-size:.76rem;font-weight:800;color:#14532d;margin-bottom:1px;">第一種（無利子）</div><div style="font-size:.67rem;color:#166534;line-height:1.5;">成績優秀者向け。無利子で借りられる。</div></div>
+          </div>
+          <div style="display:flex;gap:10px;align-items:flex-start;background:#eff6ff;border-radius:10px;padding:9px 12px;">
+            <span style="font-size:.95rem;">📋</span>
+            <div><div style="font-size:.76rem;font-weight:800;color:#1d4ed8;margin-bottom:1px;">第二種（有利子）</div><div style="font-size:.67rem;color:#3b82f6;line-height:1.5;">最も一般的。利率は年0〜3%程度。卒業後に返済。</div></div>
+          </div>
+        </div>
+        <!-- 設定 -->
+        <div style="background:#f8fafc;border-radius:12px;padding:14px;">
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;">
+            <span style="font-size:.82rem;font-weight:700;color:#1a2b4a;">奨学金を利用する</span>
+            <label class="toggle"><input type="checkbox" id="ob-schol-on" onchange="document.getElementById('ob-schol-type-wrap').style.display=this.checked?'':'none'"><span class="toggle-slider"></span></label>
+          </div>
+          <div id="ob-schol-type-wrap" style="display:none;">
+            <div style="font-size:.72rem;font-weight:700;color:#475569;margin-bottom:6px;">種別を選択</div>
+            <select id="ob-schol-type" class="sb-select">
+              <option value="grant">給付型（返済不要）</option>
+              <option value="type1">第一種 無利子貸与</option>
+              <option value="type2" selected>第二種 有利子貸与</option>
+            </select>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ===== STEP 6: 教育資金投資・専用ファンド ===== -->
+    <div id="ob-step-6" style="display:none;padding:22px 24px 18px;">
+      <div style="margin-bottom:14px;">
+        <div style="font-size:1rem;font-weight:900;color:#1a2b4a;margin-bottom:4px;">📈 教育資金を投資運用しますか？</div>
+        <div style="font-size:.75rem;color:#64748b;line-height:1.6;">積立を投資に回すと複利効果で資産が増える可能性があります。元本保証はありません。</div>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:11px;">
+        <!-- 投資運用の説明 -->
+        <div style="background:#f0fdf4;border-radius:10px;padding:11px 13px;">
+          <div style="font-size:.75rem;font-weight:800;color:#14532d;margin-bottom:4px;">📊 投資運用とは？</div>
+          <div style="font-size:.67rem;color:#166534;line-height:1.6;">毎月の積立をNISA・インデックスファンド等で運用します。<br>オルカン（全世界株式）の長期平均リターンは年率5〜7%程度。<br><span style="color:#dc2626;font-weight:700;">※過去実績は将来を保証しません</span></div>
+        </div>
+        <!-- 子供専用ファンドの説明 -->
+        <div style="background:#eff6ff;border-radius:10px;padding:11px 13px;">
+          <div style="font-size:.75rem;font-weight:800;color:#1d4ed8;margin-bottom:4px;">💰 子供専用ファンドとは？</div>
+          <div style="font-size:.67rem;color:#3b82f6;line-height:1.6;">特定の子ども1人のために現在の教育貯金をまとめて運用するシミュレーションです。<br>例：「長男の教育貯金100万円を今から年率5%で運用したら…」を計算できます。</div>
+        </div>
+        <!-- 設定 -->
+        <div style="background:#f8fafc;border-radius:12px;padding:14px;display:flex;flex-direction:column;gap:10px;">
+          <div style="display:flex;align-items:center;justify-content:space-between;">
+            <div>
+              <div style="font-size:.82rem;font-weight:700;color:#1a2b4a;">投資運用を使う</div>
+              <div style="font-size:.65rem;color:#64748b;">子ども別に月々の積立を運用</div>
+            </div>
+            <label class="toggle"><input type="checkbox" id="ob-edu-invest-on" onchange="document.getElementById('ob-child-invest-wrap').style.display=this.checked?'':'none'"><span class="toggle-slider"></span></label>
+          </div>
+          <div id="ob-child-invest-wrap" style="display:none;border-top:1px solid #e2e8f0;padding-top:8px;">
+            <div style="font-size:.7rem;color:#475569;margin-bottom:6px;">運用する子どもを選択</div>
+            <div id="ob-child-invest-rows" style="display:flex;flex-direction:column;gap:6px;"></div>
+          </div>
+          <div style="border-top:1px solid #e2e8f0;padding-top:10px;display:flex;align-items:center;justify-content:space-between;">
+            <div>
+              <div style="font-size:.82rem;font-weight:700;color:#1a2b4a;">子供専用ファンドを使う</div>
+              <div style="font-size:.65rem;color:#64748b;">現在の教育貯金を一括運用</div>
+            </div>
+            <label class="toggle"><input type="checkbox" id="ob-fund-on"><span class="toggle-slider"></span></label>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ===== STEP 7: 老後目標 ===== -->
+    <div id="ob-step-7" style="display:none;padding:22px 24px 18px;">
+      <div style="margin-bottom:14px;">
+        <div style="font-size:1rem;font-weight:900;color:#1a2b4a;margin-bottom:4px;">🏖️ 老後の目標を設定しましょう</div>
+        <div style="font-size:.75rem;color:#64748b;line-height:1.6;">「何歳までにいくら」という目標を設定することで、毎月必要な積立額が計算されます。</div>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:16px;">
+        <!-- 参考情報 -->
+        <div style="background:#fef9c3;border-radius:10px;padding:11px 14px;">
+          <div style="font-size:.74rem;font-weight:800;color:#92400e;margin-bottom:5px;">💡 老後2,000万円問題とは？</div>
+          <div style="font-size:.67rem;color:#78350f;line-height:1.6;">金融審議会の試算では、夫婦が老後30年間生活するために公的年金だけでは月約5.5万円不足し、総額約2,000万円の不足が生じるとされています。実際の必要額はライフスタイルによって異なります。</div>
+        </div>
+        <!-- 目標設定 -->
+        <div style="background:#f8fafc;border-radius:12px;padding:14px;">
+          <div style="margin-bottom:12px;">
+            <div style="font-size:.76rem;font-weight:700;color:#475569;margin-bottom:6px;">退職（老後資金達成）目標年齢</div>
+            <div style="display:flex;align-items:center;gap:10px;">
+              <input id="ob-retire-age" type="number" value="65" min="50" max="80" step="1" style="width:80px;padding:10px 12px;border:1.5px solid #e2e8f0;border-radius:10px;font-size:1.1rem;font-weight:700;text-align:center;">
+              <span style="font-size:.9rem;color:#475569;">歳</span>
+              <span style="font-size:.67rem;color:#94a3b8;">（目安: 60〜70歳）</span>
+            </div>
+          </div>
+          <div>
+            <div style="font-size:.76rem;font-weight:700;color:#475569;margin-bottom:6px;">老後に必要な資金の目標額</div>
+            <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
+              <input id="ob-retire-target" type="number" value="2000" min="500" max="5000" step="100" style="width:100px;padding:10px 12px;border:1.5px solid #e2e8f0;border-radius:10px;font-size:1.1rem;font-weight:700;text-align:center;">
+              <span style="font-size:.9rem;color:#475569;">万円</span>
+            </div>
+            <div style="display:flex;gap:8px;margin-top:8px;flex-wrap:wrap;">
+              <button onclick="document.getElementById('ob-retire-target').value=1500" style="padding:5px 10px;border:1.5px solid #e2e8f0;background:#fff;border-radius:8px;font-size:.72rem;cursor:pointer;font-weight:700;color:#475569;touch-action:manipulation;">1,500万</button>
+              <button onclick="document.getElementById('ob-retire-target').value=2000" style="padding:5px 10px;border:1.5px solid #2563eb;background:#eff6ff;border-radius:8px;font-size:.72rem;cursor:pointer;font-weight:700;color:#2563eb;touch-action:manipulation;">2,000万（標準）</button>
+              <button onclick="document.getElementById('ob-retire-target').value=3000" style="padding:5px 10px;border:1.5px solid #e2e8f0;background:#fff;border-radius:8px;font-size:.72rem;cursor:pointer;font-weight:700;color:#475569;touch-action:manipulation;">3,000万</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div id="ob-step-8" style="display:none;padding:24px 28px 20px;">
       <div style="margin-bottom:16px;">
         <div style="font-size:1.05rem;font-weight:900;color:#1a2b4a;margin-bottom:4px;">&#x1F3E6; 現在の貯蓄と月々の積立目標</div>
         <div style="font-size:.78rem;color:#64748b;">スライダーで月額を調整してください。</div>
@@ -5079,7 +5344,7 @@ window.addEventListener('DOMContentLoaded', () => setTimeout(waitAndInit, 50));
       </div>
     </div>
 
-    <div id="ob-step-5" style="display:none;padding:24px 28px 20px;">
+    <div id="ob-step-9" style="display:none;padding:24px 28px 20px;">
       <div style="margin-bottom:16px;">
         <div style="font-size:1.05rem;font-weight:900;color:#1a2b4a;margin-bottom:4px;">&#x1F4D6; 教育資金カードの見方</div>
         <div style="font-size:.78rem;color:#64748b;">メイン画面に表示されるカードの読み方をご確認ください。</div>
@@ -5100,54 +5365,7 @@ window.addEventListener('DOMContentLoaded', () => setTimeout(waitAndInit, 50));
       </div>
     </div>
 
-    <div id="ob-step-6" style="display:none;padding:24px 28px 20px;">
-      <div style="margin-bottom:16px;">
-        <div style="font-size:1.05rem;font-weight:900;color:#1a2b4a;margin-bottom:4px;">&#x2699;&#xFE0F; 応用機能のご紹介</div>
-        <div style="font-size:.78rem;color:#64748b;">左のサイドバーから設定できる便利な機能です。</div>
-      </div>
-      <div style="display:flex;flex-direction:column;gap:9px;">
-        <div style="border:1.5px solid #bae6fd;border-radius:11px;padding:12px 14px;background:#f0f9ff;display:flex;gap:10px;align-items:flex-start;">
-          <span style="font-size:1.2rem;">&#x1F4B9;</span>
-          <div><div style="font-size:.8rem;font-weight:800;color:#0369a1;margin-bottom:2px;">専用ファンド（教育資金投資）</div><div style="font-size:.68rem;color:#0284c7;line-height:1.5;">複利運用効果をシミュレーションできます。</div></div>
-        </div>
-        <div style="border:1.5px solid #fde68a;border-radius:11px;padding:12px 14px;background:#fefce8;display:flex;gap:10px;align-items:flex-start;">
-          <span style="font-size:1.2rem;">&#x1F4DC;</span>
-          <div><div style="font-size:.8rem;font-weight:800;color:#854d0e;margin-bottom:2px;">奨学金シミュレーション</div><div style="font-size:.68rem;color:#92400e;line-height:1.5;">給付型・第一種・第二種の奨学金を設定できます。</div></div>
-        </div>
-        <div style="border:1.5px solid #a7f3d0;border-radius:11px;padding:12px 14px;background:#ecfdf5;display:flex;gap:10px;align-items:flex-start;">
-          <span style="font-size:1.2rem;">&#x1F3DB;</span>
-          <div><div style="font-size:.8rem;font-weight:800;color:#065f46;margin-bottom:2px;">多子世帯補助（3人以上で自動適用）</div><div style="font-size:.68rem;color:#047857;line-height:1.5;">授業料無償化制度を自動で計算に反映します。</div></div>
-        </div>
-        <div style="border:1.5px solid #fbcfe8;border-radius:11px;padding:12px 14px;background:#fdf2f8;display:flex;gap:10px;align-items:flex-start;">
-          <span style="font-size:1.2rem;">&#x1F4C8;</span>
-          <div><div style="font-size:.8rem;font-weight:800;color:#831843;margin-bottom:2px;">積立ステップアップ</div><div style="font-size:.68rem;color:#9d174d;line-height:1.5;">卒業後に教育費積立分を老後資金へ回すシミュレーション。</div></div>
-        </div>
-      </div>
-    </div>
-
-    <div id="ob-step-7" style="display:none;padding:28px 28px 24px;text-align:center;">
-      <div style="font-size:3rem;margin-bottom:14px;">&#x1F389;</div>
-      <div style="font-size:1.15rem;font-weight:900;color:#1a2b4a;margin-bottom:8px;">設定完了です！</div>
-      <div style="font-size:.82rem;color:#475569;line-height:1.7;margin-bottom:20px;">入力した情報でシミュレーションを開始します。<br>左のサイドバーで詳細を調整してみましょう。</div>
-      <div style="background:linear-gradient(135deg,#1a2b4a,#2563eb);border-radius:16px;padding:16px 20px;text-align:left;margin-bottom:16px;">
-        <div style="font-size:.7rem;color:rgba(255,255,255,.6);margin-bottom:10px;text-align:center;">&#x1F4CB; 設定内容のまとめ</div>
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
-          <div style="background:rgba(255,255,255,.12);border-radius:10px;padding:10px 12px;"><div style="font-size:.63rem;color:rgba(255,255,255,.6);margin-bottom:3px;">子どもの人数</div><div id="ob-summary-numch" style="font-size:.95rem;font-weight:900;color:#fff;">&#x2014;</div></div>
-          <div style="background:rgba(255,255,255,.12);border-radius:10px;padding:10px 12px;"><div style="font-size:.63rem;color:rgba(255,255,255,.6);margin-bottom:3px;">月々の積立合計</div><div id="ob-summary-monthly" style="font-size:.95rem;font-weight:900;color:#fff;">&#x2014;</div></div>
-        </div>
-      </div>
-      <div style="background:#f0fdf4;border-radius:12px;padding:12px 16px;font-size:.74rem;color:#14532d;line-height:1.7;text-align:left;border-left:3px solid #16a34a;">
-        &#x1F4A1; <strong>次のステップ：</strong><br>
-        ① 各子どものカードで「過不足」を確認する<br>
-        ② 不足がある場合は積立額を増やすか進路を変更してみる<br>
-        ③ サイドバーで奨学金・ファンドなどを追加設定する
-      </div>
-    </div>
-
-    <div id="ob-step-8" style="display:none;padding:24px 28px 20px;">
-      <div style="margin-bottom:16px;">
-        <div style="font-size:1.05rem;font-weight:900;color:#1a2b4a;margin-bottom:4px;">⚙️ 詳細設定でさらに精度アップ！</div>
-        <div style="font-size:.78rem;color:#64748b;line-height:1.6;">教育・老後プランナーで詳しい情報を入力すると、より正確なシミュレーションができます。</div>
+    
       </div>
       <div style="display:flex;flex-direction:column;gap:10px;">
         <div style="background:#eff6ff;border-radius:12px;padding:14px 16px;border-left:4px solid #2563eb;">
@@ -5227,6 +5445,25 @@ window.addEventListener('DOMContentLoaded', () => setTimeout(waitAndInit, 50));
             </div>
           </div>
         </div>
+      </div>
+    </div>
+
+    <div id="ob-step-10" style="display:none;padding:28px 28px 24px;text-align:center;">
+      <div style="font-size:3rem;margin-bottom:14px;">🎉</div>
+      <div style="font-size:1.15rem;font-weight:900;color:#1a2b4a;margin-bottom:8px;">設定完了です！</div>
+      <div style="font-size:.82rem;color:#475569;line-height:1.7;margin-bottom:20px;">入力した情報でシミュレーションを開始します。<br>左のサイドバーで詳細を調整してみましょう。</div>
+      <div style="background:linear-gradient(135deg,#1a2b4a,#2563eb);border-radius:16px;padding:16px 20px;text-align:left;margin-bottom:16px;">
+        <div style="font-size:.7rem;color:rgba(255,255,255,.6);margin-bottom:10px;text-align:center;">📋 設定内容のまとめ</div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
+          <div style="background:rgba(255,255,255,.12);border-radius:10px;padding:10px 12px;"><div style="font-size:.63rem;color:rgba(255,255,255,.6);margin-bottom:3px;">子どもの人数</div><div id="ob-summary-numch" style="font-size:.95rem;font-weight:900;color:#fff;">―</div></div>
+          <div style="background:rgba(255,255,255,.12);border-radius:10px;padding:10px 12px;"><div style="font-size:.63rem;color:rgba(255,255,255,.6);margin-bottom:3px;">月々の積立合計</div><div id="ob-summary-monthly" style="font-size:.95rem;font-weight:900;color:#fff;">―</div></div>
+        </div>
+      </div>
+      <div style="background:#f0fdf4;border-radius:12px;padding:12px 16px;font-size:.74rem;color:#14532d;line-height:1.7;text-align:left;border-left:3px solid #16a34a;">
+        💡 <strong>次のステップ：</strong><br>
+        ① 各子どものカードで「過不足」を確認する<br>
+        ② 不足がある場合は積立額を増やすか進路を変更<br>
+        ③ ⚙️設定 ボタンで詳細な前提条件を設定する
       </div>
     </div>
 
