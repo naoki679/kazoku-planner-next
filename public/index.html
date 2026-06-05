@@ -162,6 +162,11 @@ input[type=range]{flex:1;height:4px;accent-color:var(--blue);cursor:pointer;}
   .hd-btn-cfg, .hd-btn-reset{padding:6px 8px !important;font-size:.7rem !important;}
   .hd-btn-cfg .btn-label, .hd-btn-reset .btn-label{display:none;}
   .hd-left{flex:1;min-width:0;overflow:hidden;}
+  /* モバイルでFirebaseユーザー情報をコンパクトに */
+  #fb-user-name{display:none !important;}
+  #fb-sync-status{display:none !important;}
+  #fb-user-info button:last-child{padding:4px 6px !important;font-size:.6rem !important;}
+  .fb-login-label{display:none;}
 
   /* レイアウト */
   .app{display:block;height:auto;overflow:visible;}
@@ -288,9 +293,9 @@ input[type=range]{flex:1;height:4px;accent-color:var(--blue);cursor:pointer;}
     <div class="hd-badge">📊 リアルタイム試算</div>
     <div id="save-badge" style="font-size:.65rem;color:rgba(255,255,255,.45);display:none;">💾 保存済み</div>
     <!-- Firebase ログイン UI -->
-    <button id="fb-login-btn" onclick="loginWithGoogle()" title="Googleでログインしてデータを同期"
+    <button id="fb-login-btn" onclick="openFbLoginModal()" title="ログインしてデータを同期"
       style="background:rgba(255,255,255,.15);border:1px solid rgba(255,255,255,.35);color:#fff;padding:5px 10px;border-radius:8px;cursor:pointer;font-size:.72rem;font-weight:700;white-space:nowrap;touch-action:manipulation;display:flex;align-items:center;gap:5px;">
-      <img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" style="width:14px;height:14px;">ログイン
+      ☁️ <span class="fb-login-label">ログイン</span>
     </button>
     <div id="fb-user-info" style="display:none;align-items:center;gap:5px;">
       <img id="fb-user-photo" style="width:24px;height:24px;border-radius:50%;border:2px solid rgba(255,255,255,.4);" src="" alt="">
@@ -5485,10 +5490,8 @@ function initFirebase(){
     fbApp  = firebase.initializeApp(FIREBASE_CONFIG);
     fbAuth = firebase.auth();
     fbDb   = firebase.firestore();
-    // Redirect認証の結果を処理
-    fbAuth.getRedirectResult().then(result => {
-      if(result && result.user) console.log('Redirect login:', result.user.email);
-    }).catch(e => console.warn('Redirect result:', e.code));
+    // Redirect結果を処理（Popup失敗時のフォールバック用）
+    fbAuth.getRedirectResult().catch(e => console.warn('Redirect result:', e.code));
     fbAuth.onAuthStateChanged(user => {
       fbCurrentUser = user;
       updateFbUI(user);
@@ -5503,19 +5506,55 @@ function initFirebase(){
   } catch(e){ console.warn('Firebase init error:', e); }
 }
 
+function openFbLoginModal(){
+  const m = document.getElementById('fb-login-modal');
+  if(m){ m.style.display='flex'; document.body.style.overflow='hidden'; }
+}
+function closeFbLoginModal(){
+  const m = document.getElementById('fb-login-modal');
+  if(m){ m.style.display='none'; document.body.style.overflow=''; }
+  document.getElementById('fb-login-err').textContent = '';
+}
+function fbEmailLogin(){
+  const email = document.getElementById('fb-email').value.trim();
+  const pass  = document.getElementById('fb-pass').value;
+  const err   = document.getElementById('fb-login-err');
+  err.textContent = '';
+  if(!email||!pass){ err.textContent='メールとパスワードを入力してください'; return; }
+  err.textContent = '⏳ ログイン中...';
+  fbAuth.signInWithEmailAndPassword(email, pass)
+    .then(() => { closeFbLoginModal(); })
+    .catch(e => {
+      if(e.code==='auth/user-not-found'||e.code==='auth/wrong-password'||e.code==='auth/invalid-credential'){
+        err.textContent = 'メールまたはパスワードが違います';
+      } else {
+        err.textContent = 'エラー: ' + (e.code||e.message);
+      }
+    });
+}
+function fbEmailRegister(){
+  const email = document.getElementById('fb-email').value.trim();
+  const pass  = document.getElementById('fb-pass').value;
+  const err   = document.getElementById('fb-login-err');
+  err.textContent = '';
+  if(!email||!pass){ err.textContent='メールとパスワードを入力してください'; return; }
+  if(pass.length < 6){ err.textContent='パスワードは6文字以上にしてください'; return; }
+  err.textContent = '⏳ 登録中...';
+  fbAuth.createUserWithEmailAndPassword(email, pass)
+    .then(() => { closeFbLoginModal(); showToast('☁️ アカウントを作成しました'); })
+    .catch(e => {
+      if(e.code==='auth/email-already-in-use'){
+        err.textContent = 'このメールは既に登録されています。ログインしてください';
+      } else {
+        err.textContent = 'エラー: ' + (e.code||e.message);
+      }
+    });
+}
+// Google login は残す（PC用）
 function loginWithGoogle(){
   if(!fbAuth) return;
   const provider = new firebase.auth.GoogleAuthProvider();
-  const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
-  if(isMobile){
-    // iOS SafariはPopupが動かないのでRedirectを使用
-    fbAuth.signInWithRedirect(provider);
-  } else {
-    fbAuth.signInWithPopup(provider).catch(e => {
-      // PC でも失敗した場合はRedirectにフォールバック
-      fbAuth.signInWithRedirect(provider);
-    });
-  }
+  fbAuth.signInWithPopup(provider).catch(e => { console.warn('Google login:', e.code); });
 }
 
 function fbLogout(){
@@ -5595,19 +5634,48 @@ function loadFromFirestore(uid){
 
 // 「📥 読込」ボタン押下時
 function fbShowChoice(){
-  if(!fbCurrentUser || !fbDb){ alert('ログインしてください'); return; }
+  if(!fbCurrentUser){ alert('まずログインしてください'); return; }
+  if(!fbDb){ alert('Firebase未初期化です'); return; }
+  showFbStatus('⏳ 確認中...');
   fbDb.collection('users').doc(fbCurrentUser.uid).collection('sync').doc('main')
     .get()
     .then(doc => {
+      showFbStatus('✅ 同期済み');
       if(doc.exists){
-        showFbChoiceDialog(doc.data());
-      } else {
-        if(confirm('クラウドにデータがありません。この端末のデータを保存しますか？')){
+        const d = doc.data();
+        const dt = d.updatedAt?.toDate?.() ? d.updatedAt.toDate().toLocaleString('ja-JP') : '日時不明';
+        const useCloud = confirm(
+          'クラウドのデータを読み込みますか？\n\n' +
+          '最終保存: ' + dt + '\n\n' +
+          'OK → クラウドのデータを使う\n' +
+          'キャンセル → この端末のデータをクラウドへ保存'
+        );
+        if(useCloud){
+          fbApplyCloudData(d);
+        } else {
           syncToFirestore(true);
         }
+      } else {
+        alert('クラウドにまだデータがありません。\nこの端末のデータを保存します。');
+        syncToFirestore(true);
       }
     })
-    .catch(e => { alert('読み込みに失敗しました: ' + e.message); });
+    .catch(e => { 
+      showFbStatus('❌ エラー');
+      alert('読込エラー: ' + (e.code || e.message)); 
+    });
+}
+
+function fbApplyCloudData(d){
+  localStorage.setItem('lifePlanSim_private_v1',   d.main          || '');
+  localStorage.setItem('lifePlanSim_v2',           d.planner       || '');
+  localStorage.setItem('kakeibo_v1',               d.kakeibo       || '');
+  localStorage.setItem('kakeibo_cards_v1',         d.kakeibo_cards || '');
+  localStorage.setItem('kakeibo_budget_v1',        d.kakeibo_budget|| '');
+  localStorage.setItem('lifePlanSim_onboarded_v1', d.onboarded     || '');
+  showFbStatus('✅ 同期済み');
+  showToast('☁️ クラウドのデータで更新します…');
+  setTimeout(() => location.reload(), 1500);
 }
 
 function showFbChoiceDialog(cloudData){
@@ -5716,6 +5784,33 @@ document.addEventListener('DOMContentLoaded', initFirebase);
   </div>
 </footer>
 <!-- ===== /アフィリエイトエリア ===== -->
+
+
+<!-- Firebase メール認証モーダル -->
+<div id="fb-login-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:99999;align-items:center;justify-content:center;padding:20px;box-sizing:border-box;"
+     onclick="if(event.target===this)closeFbLoginModal()">
+  <div style="background:#fff;border-radius:20px;padding:28px 24px;max-width:360px;width:100%;box-shadow:0 8px 40px rgba(0,0,0,.25);">
+    <div style="font-size:1.1rem;font-weight:900;color:#1a2b4a;margin-bottom:4px;">☁️ クラウド同期ログイン</div>
+    <div style="font-size:.75rem;color:#64748b;margin-bottom:20px;">別端末でもデータを共有できます</div>
+    <div style="display:flex;flex-direction:column;gap:10px;">
+      <input id="fb-email" type="email" placeholder="メールアドレス" autocomplete="email"
+        style="padding:12px 14px;border:1.5px solid #e2e8f0;border-radius:10px;font-size:.95rem;width:100%;box-sizing:border-box;">
+      <input id="fb-pass" type="password" placeholder="パスワード（6文字以上）" autocomplete="current-password"
+        style="padding:12px 14px;border:1.5px solid #e2e8f0;border-radius:10px;font-size:.95rem;width:100%;box-sizing:border-box;">
+      <div id="fb-login-err" style="font-size:.75rem;color:#dc2626;min-height:18px;"></div>
+      <button onclick="fbEmailLogin()"
+        style="padding:13px;background:linear-gradient(135deg,#2563eb,#1a2b4a);border:none;border-radius:12px;color:#fff;font-size:.95rem;font-weight:800;cursor:pointer;touch-action:manipulation;">
+        ログイン
+      </button>
+      <button onclick="fbEmailRegister()"
+        style="padding:11px;background:#f1f5f9;border:1.5px solid #e2e8f0;border-radius:12px;color:#475569;font-size:.88rem;font-weight:700;cursor:pointer;touch-action:manipulation;">
+        新規登録（初回のみ）
+      </button>
+      <button onclick="closeFbLoginModal()"
+        style="padding:8px;background:none;border:none;color:#94a3b8;font-size:.8rem;cursor:pointer;">キャンセル</button>
+    </div>
+  </div>
+</div>
 
 </body>
 </html>
