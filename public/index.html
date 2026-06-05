@@ -5590,7 +5590,7 @@ function loadFromFirestore(uid){
         showFbStatus('✅ 同期済み');
       }
     })
-    .catch(e => { showFbStatus('❌ エラー'); console.error(e); });
+    .catch(e => { showFbStatus('❌ ' + (e.code||e.message||'エラー')); console.error(e); alert('Firestore Error: ' + (e.code||e.message)); });
 }
 
 // 「📥 読込」ボタン押下時
