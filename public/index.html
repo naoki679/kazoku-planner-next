@@ -292,12 +292,14 @@ input[type=range]{flex:1;height:4px;accent-color:var(--blue);cursor:pointer;}
       style="background:rgba(255,255,255,.15);border:1px solid rgba(255,255,255,.35);color:#fff;padding:5px 10px;border-radius:8px;cursor:pointer;font-size:.72rem;font-weight:700;white-space:nowrap;touch-action:manipulation;display:flex;align-items:center;gap:5px;">
       <img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" style="width:14px;height:14px;">ログイン
     </button>
-    <div id="fb-user-info" style="display:none;align-items:center;gap:6px;">
-      <img id="fb-user-photo" style="width:26px;height:26px;border-radius:50%;border:2px solid rgba(255,255,255,.4);" src="" alt="">
-      <span id="fb-user-name" style="font-size:.7rem;color:rgba(255,255,255,.9);font-weight:700;max-width:60px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;"></span>
-      <span id="fb-sync-status" style="font-size:.6rem;color:rgba(255,255,255,.6);">同期中...</span>
-      <button onclick="syncToFirestore(true)" title="今すぐ同期"
-        style="background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.2);color:#fff;padding:4px 7px;border-radius:6px;cursor:pointer;font-size:.65rem;touch-action:manipulation;">🔄</button>
+    <div id="fb-user-info" style="display:none;align-items:center;gap:5px;">
+      <img id="fb-user-photo" style="width:24px;height:24px;border-radius:50%;border:2px solid rgba(255,255,255,.4);" src="" alt="">
+      <span id="fb-user-name" style="font-size:.68rem;color:rgba(255,255,255,.9);font-weight:700;max-width:52px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;"></span>
+      <button onclick="fbShowChoice()" title="クラウドから読み込む"
+        style="background:rgba(59,130,246,.35);border:1px solid rgba(59,130,246,.5);color:#93c5fd;padding:4px 8px;border-radius:6px;cursor:pointer;font-size:.65rem;font-weight:700;touch-action:manipulation;">📥 読込</button>
+      <button onclick="syncToFirestore(true)" title="クラウドへ保存"
+        style="background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.2);color:#fff;padding:4px 8px;border-radius:6px;cursor:pointer;font-size:.65rem;font-weight:700;touch-action:manipulation;">🔄 保存</button>
+      <span id="fb-sync-status" style="font-size:.58rem;color:rgba(255,255,255,.5);"></span>
       <button onclick="fbLogout()"
         style="background:rgba(220,38,38,.2);border:1px solid rgba(220,38,38,.4);color:#fca5a5;padding:4px 7px;border-radius:6px;cursor:pointer;font-size:.65rem;touch-action:manipulation;">退出</button>
     </div>
@@ -5574,27 +5576,38 @@ function syncToFirestore(manual=false){
 }
 
 function loadFromFirestore(uid){
+  // ログイン時は自動でローカルデータをFirestoreへ保存するのみ
+  // （読み込みはユーザーが「📥 読込」ボタンを押したときだけ）
+  showFbStatus('✅ ログイン中');
+  // Firestoreにデータがなければ自動アップロード
   if(!fbDb) return;
-  const sessionKey = 'fb_loaded_' + uid;
-  // 既にリロード後の場合のみスキップ（reload=1パラメータで判定）
-  const isAfterReload = location.search.includes('fb_reload=1');
-  if(sessionStorage.getItem(sessionKey) && isAfterReload){ showFbStatus('✅ 同期済み'); return; }
-  showFbStatus('⏳ 読込中...');
   fbDb.collection('users').doc(uid).collection('sync').doc('main')
     .get()
     .then(doc => {
-      sessionStorage.setItem(sessionKey, '1');
-      if(doc.exists){
-        // クラウドにデータあり → 選択ダイアログを表示
-        showFbChoiceDialog(doc.data());
-      } else {
-        // クラウドにデータなし → 現在のデータをアップロード
+      if(!doc.exists){
         syncToFirestore(false);
+      } else {
         showFbStatus('✅ 同期済み');
-        showToast('☁️ この端末のデータをクラウドに保存しました');
       }
     })
-    .catch(e => { console.error('Load error:', e); showFbStatus('❌ 読込失敗'); });
+    .catch(e => { showFbStatus('❌ エラー'); console.error(e); });
+}
+
+// 「📥 読込」ボタン押下時
+function fbShowChoice(){
+  if(!fbCurrentUser || !fbDb){ alert('ログインしてください'); return; }
+  fbDb.collection('users').doc(fbCurrentUser.uid).collection('sync').doc('main')
+    .get()
+    .then(doc => {
+      if(doc.exists){
+        showFbChoiceDialog(doc.data());
+      } else {
+        if(confirm('クラウドにデータがありません。この端末のデータを保存しますか？')){
+          syncToFirestore(true);
+        }
+      }
+    })
+    .catch(e => { alert('読み込みに失敗しました: ' + e.message); });
 }
 
 function showFbChoiceDialog(cloudData){
