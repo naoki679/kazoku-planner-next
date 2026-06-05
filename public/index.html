@@ -5550,6 +5550,22 @@ function fbEmailRegister(){
       }
     });
 }
+function fbSendPasswordReset(){
+  const email = document.getElementById('fb-email').value.trim();
+  const err   = document.getElementById('fb-login-err');
+  if(!email){ err.textContent='メールアドレスを入力してください'; return; }
+  err.textContent = '⏳ 送信中...';
+  fbAuth.sendPasswordResetEmail(email)
+    .then(() => {
+      err.style.color = '#16a34a';
+      err.textContent = '✅ ' + email + ' にパスワード設定メールを送りました';
+    })
+    .catch(e => {
+      err.style.color = '#dc2626';
+      err.textContent = 'エラー: ' + (e.code||e.message);
+    });
+}
+
 // Google login は残す（PC用）
 function loginWithGoogle(){
   if(!fbAuth) return;
@@ -5805,6 +5821,10 @@ document.addEventListener('DOMContentLoaded', initFirebase);
       <button onclick="fbEmailRegister()"
         style="padding:11px;background:#f1f5f9;border:1.5px solid #e2e8f0;border-radius:12px;color:#475569;font-size:.88rem;font-weight:700;cursor:pointer;touch-action:manipulation;">
         新規登録（初回のみ）
+      </button>
+      <button onclick="fbSendPasswordReset()"
+        style="padding:8px;background:none;border:none;color:#2563eb;font-size:.78rem;cursor:pointer;text-decoration:underline;">
+        パスワードを忘れた・初回設定はこちら
       </button>
       <button onclick="closeFbLoginModal()"
         style="padding:8px;background:none;border:none;color:#94a3b8;font-size:.8rem;cursor:pointer;">キャンセル</button>
