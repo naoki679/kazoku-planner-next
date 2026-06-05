@@ -265,6 +265,10 @@ input[type=range]{flex:1;height:4px;accent-color:var(--blue);cursor:pointer;}
   body { background:#fff !important; }
 }
 </style>
+<!-- Firebase SDK -->
+<script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore-compat.js"></script>
 </head>
 <body>
 
@@ -283,6 +287,20 @@ input[type=range]{flex:1;height:4px;accent-color:var(--blue);cursor:pointer;}
     <button class="hd-btn-reset" onclick="resetStorage()" style="background:rgba(220,38,38,.25);border:1px solid rgba(220,38,38,.5);color:#fca5a5;padding:6px 12px;border-radius:8px;cursor:pointer;font-size:.75rem;font-weight:700;transition:background .2s;" onmouseover="this.style.background='rgba(220,38,38,.45)'" onmouseout="this.style.background='rgba(220,38,38,.25)'">🔄 <span class="btn-label">リセット</span></button>
     <div class="hd-badge">📊 リアルタイム試算</div>
     <div id="save-badge" style="font-size:.65rem;color:rgba(255,255,255,.45);display:none;">💾 保存済み</div>
+    <!-- Firebase ログイン UI -->
+    <button id="fb-login-btn" onclick="loginWithGoogle()" title="Googleでログインしてデータを同期"
+      style="background:rgba(255,255,255,.15);border:1px solid rgba(255,255,255,.35);color:#fff;padding:5px 10px;border-radius:8px;cursor:pointer;font-size:.72rem;font-weight:700;white-space:nowrap;touch-action:manipulation;display:flex;align-items:center;gap:5px;">
+      <img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" style="width:14px;height:14px;">ログイン
+    </button>
+    <div id="fb-user-info" style="display:none;align-items:center;gap:6px;">
+      <img id="fb-user-photo" style="width:26px;height:26px;border-radius:50%;border:2px solid rgba(255,255,255,.4);" src="" alt="">
+      <span id="fb-user-name" style="font-size:.7rem;color:rgba(255,255,255,.9);font-weight:700;max-width:60px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;"></span>
+      <span id="fb-sync-status" style="font-size:.6rem;color:rgba(255,255,255,.6);">同期中...</span>
+      <button onclick="syncToFirestore(true)" title="今すぐ同期"
+        style="background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.2);color:#fff;padding:4px 7px;border-radius:6px;cursor:pointer;font-size:.65rem;touch-action:manipulation;">🔄</button>
+      <button onclick="fbLogout()"
+        style="background:rgba(220,38,38,.2);border:1px solid rgba(220,38,38,.4);color:#fca5a5;padding:4px 7px;border-radius:6px;cursor:pointer;font-size:.65rem;touch-action:manipulation;">退出</button>
+    </div>
     <div id="premium-badge" style="display:none;background:linear-gradient(135deg,#f59e0b,#f97316);color:#fff;font-size:.65rem;font-weight:800;padding:4px 9px;border-radius:20px;letter-spacing:.04em;">👑 PRO</div>
     <button class="upgrade-btn" onclick="openPremiumModal('plan')" style="background:linear-gradient(135deg,#f59e0b,#f97316);border:none;color:#fff;padding:5px 11px;border-radius:20px;cursor:pointer;font-size:.68rem;font-weight:800;letter-spacing:.03em;white-space:nowrap;touch-action:manipulation;" onmouseover="this.style.opacity='.85'" onmouseout="this.style.opacity='1'">⭐ PRO版</button>
   </div>
@@ -4262,6 +4280,7 @@ function saveToStorage(){
       badge._timer = setTimeout(()=>{ badge.style.display='none'; }, 2000);
     }
   } catch(e){ console.warn('保存エラー:', e); }
+  scheduleSyncToFirestore();
 }
 
 function loadFromStorage(){
@@ -5444,6 +5463,131 @@ function updateObTotal(){
   var el=document.getElementById('ob-total-monthly');
   if(el) el.textContent=(edu+ret).toFixed(1)+'万円/月';
 }
+
+// ============================================================
+// FIREBASE AUTH & SYNC
+// ============================================================
+const FIREBASE_CONFIG = {
+  apiKey: "AIzaSyDYPFt40auHM1ganNO0OZbM45a3siwZNJg",
+  authDomain: "kazoku-planner.firebaseapp.com",
+  projectId: "kazoku-planner",
+  storageBucket: "kazoku-planner.firebasestorage.app",
+  messagingSenderId: "561172708710",
+  appId: "1:561172708710:web:20f2d08ae06d950b189ca7"
+};
+
+let fbApp, fbAuth, fbDb, fbCurrentUser = null, fbSyncTimer = null;
+
+function initFirebase(){
+  try {
+    fbApp  = firebase.initializeApp(FIREBASE_CONFIG);
+    fbAuth = firebase.auth();
+    fbDb   = firebase.firestore();
+    fbAuth.onAuthStateChanged(user => {
+      fbCurrentUser = user;
+      updateFbUI(user);
+      if(user) loadFromFirestore(user.uid);
+    });
+  } catch(e){ console.warn('Firebase init error:', e); }
+}
+
+function loginWithGoogle(){
+  if(!fbAuth) return;
+  const provider = new firebase.auth.GoogleAuthProvider();
+  fbAuth.signInWithPopup(provider).catch(e => {
+    alert('ログインに失敗しました。\n' + e.message);
+  });
+}
+
+function fbLogout(){
+  if(!fbAuth) return;
+  fbAuth.signOut().then(() => showToast('ログアウトしました'));
+}
+
+function updateFbUI(user){
+  const loginBtn  = document.getElementById('fb-login-btn');
+  const userInfo  = document.getElementById('fb-user-info');
+  if(!loginBtn || !userInfo) return;
+  if(user){
+    loginBtn.style.display = 'none';
+    userInfo.style.display = 'flex';
+    const photo = document.getElementById('fb-user-photo');
+    const name  = document.getElementById('fb-user-name');
+    if(photo && user.photoURL) photo.src = user.photoURL;
+    if(name)  name.textContent = (user.displayName||'ユーザー').split(' ')[0];
+  } else {
+    loginBtn.style.display = '';
+    userInfo.style.display = 'none';
+  }
+}
+
+function showFbStatus(msg){
+  const el = document.getElementById('fb-sync-status');
+  if(el) el.textContent = msg;
+}
+
+// デバウンス同期（8秒後）
+function scheduleSyncToFirestore(){
+  if(!fbCurrentUser) return;
+  clearTimeout(fbSyncTimer);
+  fbSyncTimer = setTimeout(() => syncToFirestore(false), 8000);
+}
+
+function syncToFirestore(manual=false){
+  if(!fbCurrentUser || !fbDb) return;
+  showFbStatus('⏳ 保存中...');
+  const payload = {
+    main:          localStorage.getItem('lifePlanSim_private_v1') || '',
+    planner:       localStorage.getItem('lifePlanSim_v2') || '',
+    kakeibo:       localStorage.getItem('kakeibo_v1') || '',
+    kakeibo_cards: localStorage.getItem('kakeibo_cards_v1') || '',
+    kakeibo_budget:localStorage.getItem('kakeibo_budget_v1') || '',
+    onboarded:     localStorage.getItem('lifePlanSim_onboarded_v1') || '',
+    updatedAt:     firebase.firestore.FieldValue.serverTimestamp()
+  };
+  fbDb.collection('users').doc(fbCurrentUser.uid).collection('sync').doc('main')
+    .set(payload)
+    .then(() => {
+      showFbStatus('✅ 同期済み');
+      if(manual) showToast('☁️ Firestoreに保存しました');
+    })
+    .catch(e => { console.error('Sync error:', e); showFbStatus('❌ 同期失敗'); });
+}
+
+function loadFromFirestore(uid){
+  if(!fbDb) return;
+  showFbStatus('⏳ 読込中...');
+  fbDb.collection('users').doc(uid).collection('sync').doc('main')
+    .get()
+    .then(doc => {
+      if(doc.exists){
+        const d = doc.data();
+        let changed = false;
+        const set = (key, val) => { if(val){ localStorage.setItem(key, val); changed = true; } };
+        set('lifePlanSim_private_v1', d.main);
+        set('lifePlanSim_v2',         d.planner);
+        set('kakeibo_v1',             d.kakeibo);
+        set('kakeibo_cards_v1',       d.kakeibo_cards);
+        set('kakeibo_budget_v1',      d.kakeibo_budget);
+        set('lifePlanSim_onboarded_v1', d.onboarded);
+        showFbStatus('✅ 同期済み');
+        if(changed){
+          showToast('☁️ データを同期しました！');
+          setTimeout(() => location.reload(), 1800);
+        }
+      } else {
+        // 初回ログイン：現在データをアップロード
+        syncToFirestore(false);
+        showFbStatus('✅ 同期済み');
+        showToast('☁️ データをクラウドに保存しました');
+      }
+    })
+    .catch(e => { console.error('Load error:', e); showFbStatus('❌ 読込失敗'); });
+}
+
+// DOMContentLoaded後に初期化
+document.addEventListener('DOMContentLoaded', initFirebase);
+
 </script>
 
 <!-- ===== A8.net アフィリエイトエリア ===== -->
