@@ -5518,6 +5518,8 @@ function loginWithGoogle(){
 
 function fbLogout(){
   if(!fbAuth) return;
+  // セッションキャッシュを削除して次回ログイン時に再チェック
+  if(fbCurrentUser) sessionStorage.removeItem('fb_loaded_' + fbCurrentUser.uid);
   fbAuth.signOut().then(() => showToast('ログアウトしました'));
 }
 
@@ -5574,13 +5576,15 @@ function syncToFirestore(manual=false){
 function loadFromFirestore(uid){
   if(!fbDb) return;
   const sessionKey = 'fb_loaded_' + uid;
-  if(sessionStorage.getItem(sessionKey)){ showFbStatus('✅ 同期済み'); return; }
+  // 既にリロード後の場合のみスキップ（reload=1パラメータで判定）
+  const isAfterReload = location.search.includes('fb_reload=1');
+  if(sessionStorage.getItem(sessionKey) && isAfterReload){ showFbStatus('✅ 同期済み'); return; }
   showFbStatus('⏳ 読込中...');
   fbDb.collection('users').doc(uid).collection('sync').doc('main')
     .get()
     .then(doc => {
       sessionStorage.setItem(sessionKey, '1');
-      if(doc.exists && doc.data().main){
+      if(doc.exists){
         // クラウドにデータあり → 選択ダイアログを表示
         showFbChoiceDialog(doc.data());
       } else {
@@ -5653,7 +5657,7 @@ function fbUseCloud(){
       localStorage.setItem('lifePlanSim_onboarded_v1', d.onboarded    || '');
       showFbStatus('✅ 同期済み');
       showToast('☁️ クラウドのデータで更新します…');
-      setTimeout(() => location.reload(), 1500);
+      setTimeout(() => { location.href = location.pathname + '?fb_reload=1'; }, 1500);
     });
 }
 
