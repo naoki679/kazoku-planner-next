@@ -741,19 +741,17 @@ input[type=range]{flex:1;height:4px;accent-color:var(--blue);cursor:pointer;}
     <div class="sb-title">⚙️ 詳細設定</div>
     <div class="sb-field">
       <div class="sb-label">老後目標<span id="badge-retire-target" style="display:none;"></span></div>
-      <div style="display:flex;align-items:center;gap:4px;width:100%;">
-        <div class="num-row" style="flex:none;">
-          <button class="num-btn" onclick="adj('retireAge',-1)">−</button>
-          <input type="number" id="retireAge" value="65" min="50" max="80" step="1" oninput="recalc()" style="width:38px;">
-          <button class="num-btn" onclick="adj('retireAge',1)">＋</button>
-          <span class="input-unit">歳まで</span>
-        </div>
-        <div class="num-row" style="flex:1;min-width:0;">
-          <button class="num-btn" onclick="adj('retireTarget',-100)">−</button>
-          <input type="number" id="retireTarget" value="2000" min="500" max="5000" step="100" oninput="recalc()" style="min-width:0;width:100%;">
-          <button class="num-btn" onclick="adj('retireTarget',100)">＋</button>
-          <span class="input-unit">万円</span>
-        </div>
+      <div class="num-row" style="width:100%;">
+        <button class="num-btn" onclick="adj('retireAge',-1)">−</button>
+        <input type="number" id="retireAge" value="65" min="50" max="80" step="1" oninput="recalc()">
+        <button class="num-btn" onclick="adj('retireAge',1)">＋</button>
+        <span class="input-unit">歳まで</span>
+      </div>
+      <div class="num-row" style="width:100%;margin-top:6px;">
+        <button class="num-btn" onclick="adj('retireTarget',-100)">−</button>
+        <input type="number" id="retireTarget" value="2000" min="500" max="5000" step="100" oninput="recalc()">
+        <button class="num-btn" onclick="adj('retireTarget',100)">＋</button>
+        <span class="input-unit">万円</span>
       </div>
     </div>
     <div class="sb-field">
