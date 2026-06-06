@@ -1,6 +1,6 @@
 # kazoku-planner-next プロジェクト引き継ぎ書
 
-最終更新: 2026-05-31
+最終更新: 2026-06-07
 
 ---
 
@@ -178,12 +178,8 @@ kazoku-planner-next/
 
 ## 現在の課題・TODO
 
-- [ ] A8.netに登録し、広告主に提携申請する
-- [ ] 実際のA8.netタグをAffiliateBanner.tsxとindex.htmlのTODO箇所に貼り替える
 - [ ] PRO版のテストコードを削除し、本番用の決済フロー（Stripe等）を実装
 - [ ] Google Search Consoleに登録してSEO対策
-- [ ] カレンダーの動作確認（日付タップで明細ジャンプ）
-- [ ] カスタムカテゴリの動作確認
 
 ---
 
