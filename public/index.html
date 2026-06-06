@@ -921,9 +921,9 @@ input[type=range]{flex:1;height:4px;accent-color:var(--blue);cursor:pointer;}
         <span style="font-size:1.3rem;filter:drop-shadow(0 2px 4px rgba(0,0,0,.3));">💳</span>
         <div><div style="font-size:.74rem;font-weight:900;color:#fff;letter-spacing:.02em;">家計管理</div><div style="font-size:.6rem;color:rgba(255,255,255,.7);margin-top:2px;">カード明細・MF連携</div></div>
       </button>
-      <button onclick="runPremiumAIDiagnosis()" style="display:flex;align-items:center;gap:10px;border:none;border-radius:13px;padding:12px 14px;cursor:pointer;touch-action:manipulation;text-align:left;position:relative;overflow:hidden;transition:transform .15s,box-shadow .15s;background:linear-gradient(135deg,#7c2d12,#c2410c);" onmouseover="this.style.transform='translateY(-1px)';this.style.boxShadow='0 6px 20px rgba(0,0,0,.25)';" onmouseout="this.style.transform='';this.style.boxShadow='';">
-        <span style="font-size:1.3rem;filter:drop-shadow(0 2px 4px rgba(0,0,0,.3));">🤖</span>
-        <div><div style="font-size:.74rem;font-weight:900;color:#fff;letter-spacing:.02em;">詳細AI診断</div><div style="font-size:.6rem;color:rgba(255,255,255,.7);margin-top:2px;">Claude AIレポート</div></div>
+      <button onclick="openPortfolioModal()" style="display:flex;align-items:center;gap:10px;border:none;border-radius:13px;padding:12px 14px;cursor:pointer;touch-action:manipulation;text-align:left;position:relative;overflow:hidden;transition:transform .15s,box-shadow .15s;background:linear-gradient(135deg,#064e3b,#0d9488);" onmouseover="this.style.transform='translateY(-1px)';this.style.boxShadow='0 6px 20px rgba(0,0,0,.25)';" onmouseout="this.style.transform='';this.style.boxShadow='';">
+        <span style="font-size:1.3rem;filter:drop-shadow(0 2px 4px rgba(0,0,0,.3));">📈</span>
+        <div><div style="font-size:.74rem;font-weight:900;color:#fff;letter-spacing:.02em;">投資ポートフォリオ</div><div style="font-size:.6rem;color:rgba(255,255,255,.7);margin-top:2px;">投資信託・株・資産配分</div></div>
       </button>
       <button onclick="openPlanModal()" style="display:flex;align-items:center;gap:10px;border:none;border-radius:13px;padding:12px 14px;cursor:pointer;touch-action:manipulation;text-align:left;position:relative;overflow:hidden;transition:transform .15s,box-shadow .15s;background:linear-gradient(135deg,#312e81,#4f46e5);" onmouseover="this.style.transform='translateY(-1px)';this.style.boxShadow='0 6px 20px rgba(0,0,0,.25)';" onmouseout="this.style.transform='';this.style.boxShadow='';">
         <span style="font-size:1.3rem;filter:drop-shadow(0 2px 4px rgba(0,0,0,.3));">💾</span>
@@ -5625,6 +5625,314 @@ function fbDoSetPassword(){
     });
 }
 
+
+// ===== 投資ポートフォリオ機能 =====
+let PM_DATA = [];  // 投資信託
+let PS_DATA = [];  // 個別株
+let PA_DATA = {cash:0, insurance:0, realestate:0, other:0}; // その他資産
+
+function loadPortfolioData(){
+  try{ PM_DATA = JSON.parse(localStorage.getItem('kazoku_portfolio_mutual_v1')||'[]'); }catch(e){ PM_DATA=[]; }
+  try{ PS_DATA = JSON.parse(localStorage.getItem('kazoku_portfolio_stocks_v1')||'[]'); }catch(e){ PS_DATA=[]; }
+  try{ PA_DATA = JSON.parse(localStorage.getItem('kazoku_portfolio_assets_v1')||'{}');
+    PA_DATA = {cash:0,insurance:0,realestate:0,other:0,...PA_DATA};
+  }catch(e){ PA_DATA={cash:0,insurance:0,realestate:0,other:0}; }
+}
+function savePortfolioData(){
+  localStorage.setItem('kazoku_portfolio_mutual_v1', JSON.stringify(PM_DATA));
+  localStorage.setItem('kazoku_portfolio_stocks_v1', JSON.stringify(PS_DATA));
+  localStorage.setItem('kazoku_portfolio_assets_v1', JSON.stringify(PA_DATA));
+  if(fbCurrentUser) scheduleSyncToFirestore();
+}
+
+function openPortfolioModal(){
+  loadPortfolioData();
+  const m = document.getElementById('portfolio-modal');
+  if(m){ m.style.display='flex'; document.body.style.overflow='hidden'; }
+  // 手動入力フィールドに保存値を反映
+  setTimeout(()=>{
+    ['cash','insurance','realestate','other'].forEach(k=>{
+      const el=document.getElementById('pa-'+k);
+      if(el && PA_DATA[k]) el.value=PA_DATA[k];
+    });
+  },50);
+  switchPTab('mutual');
+}
+function closePortfolioModal(){
+  const m = document.getElementById('portfolio-modal');
+  if(m){ m.style.display='none'; document.body.style.overflow=''; }
+}
+function switchPTab(tab){
+  ['mutual','stocks','chart'].forEach(t=>{
+    document.getElementById('ppanel-'+t).style.display = t===tab?'block':'none';
+    const btn = document.getElementById('ptab-'+t);
+    if(btn){
+      btn.style.background = t===tab?'#0f172a':'transparent';
+      btn.style.color = t===tab?'#fff':'#64748b';
+    }
+  });
+  if(tab==='mutual') renderMutualFunds();
+  if(tab==='stocks') renderStocks();
+  if(tab==='chart') renderPieChart();
+}
+
+// ── 投資信託 ──
+function renderMutualFunds(){
+  const tbody = document.getElementById('pmutual-rows');
+  if(!tbody) return;
+  tbody.innerHTML = '';
+  let totalCost=0, totalVal=0;
+  PM_DATA.forEach((row,i)=>{
+    const cost = parseFloat(row.cost)||0;
+    const val  = parseFloat(row.value)||0;
+    const gain = val - cost;
+    const gainPct = cost>0 ? (gain/cost*100).toFixed(1) : '-';
+    const color = gain>=0?'#16a34a':'#dc2626';
+    totalCost += cost; totalVal += val;
+    tbody.innerHTML += `<tr style="border-bottom:1px solid #f1f5f9;">
+      <td style="padding:8px 4px;"><input value="${row.name||''}" onchange="PM_DATA[${i}].name=this.value;savePortfolioData();" style="width:100%;border:1px solid #e2e8f0;border-radius:6px;padding:4px 6px;font-size:.78rem;"></td>
+      <td style="padding:8px 4px;"><input type="number" value="${cost||''}" onchange="PM_DATA[${i}].cost=parseFloat(this.value)||0;savePortfolioData();renderMutualFunds();" style="width:80px;border:1px solid #e2e8f0;border-radius:6px;padding:4px 6px;font-size:.78rem;text-align:right;"></td>
+      <td style="padding:8px 4px;"><input type="number" value="${val||''}" onchange="PM_DATA[${i}].value=parseFloat(this.value)||0;savePortfolioData();renderMutualFunds();" style="width:80px;border:1px solid #e2e8f0;border-radius:6px;padding:4px 6px;font-size:.78rem;text-align:right;"></td>
+      <td style="padding:8px 4px;text-align:right;font-size:.78rem;font-weight:700;color:${color};">${gain>=0?'+':''}${Math.round(gain).toLocaleString()}<br><span style="font-size:.68rem;">(${gainPct}%)</span></td>
+      <td style="padding:8px 4px;text-align:center;"><button onclick="PM_DATA.splice(${i},1);savePortfolioData();renderMutualFunds();" style="background:none;border:none;cursor:pointer;color:#94a3b8;font-size:.9rem;">🗑</button></td>
+    </tr>`;
+  });
+  const totalGain = totalVal - totalCost;
+  const totalGainPct = totalCost>0 ? (totalGain/totalCost*100).toFixed(1) : '-';
+  const tc = totalGain>=0?'#16a34a':'#dc2626';
+  document.getElementById('pmutual-summary').innerHTML =
+    `<span>投資元本 <strong>${Math.round(totalCost/10000).toLocaleString()}万円</strong></span>` +
+    `<span style="margin:0 8px;">→ 評価額 <strong>${Math.round(totalVal/10000).toLocaleString()}万円</strong></span>` +
+    `<span style="color:${tc};font-weight:800;">${totalGain>=0?'+':''}${Math.round(totalGain/10000).toLocaleString()}万円 (${totalGainPct}%)</span>`;
+}
+function addMutualFund(){
+  PM_DATA.push({name:'',cost:0,value:0});
+  savePortfolioData(); renderMutualFunds();
+}
+
+// ── 個別株 ──
+function renderStocks(){
+  const tbody = document.getElementById('pstocks-rows');
+  if(!tbody) return;
+  tbody.innerHTML = '';
+  let totalCost=0, totalVal=0;
+  PS_DATA.forEach((row,i)=>{
+    const cost = parseFloat(row.cost)||0;
+    const val  = parseFloat(row.value)||0;
+    const gain = val - cost;
+    const gainPct = cost>0 ? (gain/cost*100).toFixed(1) : '-';
+    const color = gain>=0?'#16a34a':'#dc2626';
+    totalCost += cost; totalVal += val;
+    tbody.innerHTML += `<tr style="border-bottom:1px solid #f1f5f9;">
+      <td style="padding:8px 4px;"><input value="${row.name||''}" onchange="PS_DATA[${i}].name=this.value;savePortfolioData();" style="width:100%;border:1px solid #e2e8f0;border-radius:6px;padding:4px 6px;font-size:.78rem;min-width:80px;"></td>
+      <td style="padding:8px 4px;"><input type="number" value="${cost||''}" onchange="PS_DATA[${i}].cost=parseFloat(this.value)||0;savePortfolioData();renderStocks();" style="width:80px;border:1px solid #e2e8f0;border-radius:6px;padding:4px 6px;font-size:.78rem;text-align:right;"></td>
+      <td style="padding:8px 4px;"><input type="number" value="${val||''}" onchange="PS_DATA[${i}].value=parseFloat(this.value)||0;savePortfolioData();renderStocks();" style="width:80px;border:1px solid #e2e8f0;border-radius:6px;padding:4px 6px;font-size:.78rem;text-align:right;"></td>
+      <td style="padding:8px 4px;text-align:right;font-size:.78rem;font-weight:700;color:${color};">${gain>=0?'+':''}${Math.round(gain).toLocaleString()}<br><span style="font-size:.68rem;">(${gainPct}%)</span></td>
+      <td style="padding:8px 4px;text-align:center;"><button onclick="PS_DATA.splice(${i},1);savePortfolioData();renderStocks();" style="background:none;border:none;cursor:pointer;color:#94a3b8;font-size:.9rem;">🗑</button></td>
+    </tr>`;
+  });
+  const totalGain = totalVal - totalCost;
+  const totalGainPct = totalCost>0 ? (totalGain/totalCost*100).toFixed(1) : '-';
+  const tc = totalGain>=0?'#16a34a':'#dc2626';
+  document.getElementById('pstocks-summary').innerHTML =
+    `<span>投資元本 <strong>${Math.round(totalCost/10000).toLocaleString()}万円</strong></span>` +
+    `<span style="margin:0 8px;">→ 評価額 <strong>${Math.round(totalVal/10000).toLocaleString()}万円</strong></span>` +
+    `<span style="color:${tc};font-weight:800;">${totalGain>=0?'+':''}${Math.round(totalGain/10000).toLocaleString()}万円 (${totalGainPct}%)</span>`;
+}
+function addStock(){
+  PS_DATA.push({name:'',cost:0,value:0});
+  savePortfolioData(); renderStocks();
+}
+
+// ── CSVインポート ──
+function triggerCSVImport(type){
+  const inp = document.getElementById('pcsv-input-'+type);
+  if(inp) inp.click();
+}
+function importPortfolioCSV(file, type){
+  if(!file) return;
+  const reader = new FileReader();
+  reader.onload = function(e){
+    let text = e.target.result;
+    // BOM除去
+    if(text.charCodeAt(0)===0xFEFF) text = text.slice(1);
+    parsePortfolioCSV(text, type);
+  };
+  // Shift-JIS対応
+  try {
+    const reader2 = new FileReader();
+    reader2.onload = function(e2){
+      const buf = e2.target.result;
+      // UTF-8で試す
+      const utf8 = new TextDecoder('utf-8').decode(buf);
+      // 文字化けチェック（置換文字が多い場合はSJIS）
+      const badCount = (utf8.match(/�/g)||[]).length;
+      if(badCount > 3){
+        const sjis = new TextDecoder('shift-jis').decode(buf);
+        parsePortfolioCSV(sjis.replace(/^﻿/,''), type);
+      } else {
+        parsePortfolioCSV(utf8.replace(/^﻿/,''), type);
+      }
+    };
+    reader2.readAsArrayBuffer(file);
+  } catch(e){ reader.readAsText(file, 'UTF-8'); }
+}
+function parsePortfolioCSV(text, mode){
+  const lines = text.split(/\r?\n/).filter(l=>l.trim());
+  if(lines.length < 2){ alert('CSVのデータが読み取れませんでした'); return; }
+  // ヘッダー行を探す（銘柄/ファンド名が含まれる行）
+  let headerIdx = 0;
+  for(let i=0;i<Math.min(5,lines.length);i++){
+    if(lines[i].match(/銘柄|ファンド|名称/)){headerIdx=i;break;}
+  }
+  const headers = parseCsvLine(lines[headerIdx]);
+  // カラムマッピング
+  const nameCol   = findCol(headers, ['銘柄名','ファンド名','名称','銘柄']);
+  const costCol   = findCol(headers, ['取得金額','投資金額','取得価格','取得単価','平均取得価額']);
+  const valueCol  = findCol(headers, ['評価額','時価評価額','評価金額','現在値','時価']);
+  if(nameCol<0){ alert('銘柄名の列が見つかりません。\n対応フォーマット: 楽天証券・SBI証券の保有銘柄CSV'); return; }
+  const imported = [];
+  for(let i=headerIdx+1;i<lines.length;i++){
+    const cols = parseCsvLine(lines[i]);
+    if(!cols[nameCol] || cols[nameCol].trim()==='') continue;
+    const name = cols[nameCol].trim().replace(/"/g,'');
+    let cost  = costCol>=0  ? parseNumericCell(cols[costCol]) : 0;
+    let value = valueCol>=0 ? parseNumericCell(cols[valueCol]) : 0;
+    // 取得単価×数量の場合
+    if(cost===0){
+      const priceCol  = findCol(headers, ['取得単価','平均取得単価']);
+      const countCol  = findCol(headers, ['保有株数','保有口数','数量','保有数量']);
+      if(priceCol>=0 && countCol>=0){
+        cost = parseNumericCell(cols[priceCol]) * parseNumericCell(cols[countCol]);
+      }
+    }
+    if(name) imported.push({name, cost:Math.round(cost), value:Math.round(value)});
+  }
+  if(imported.length===0){ alert('データが読み取れませんでした'); return; }
+  if(mode==='mutual'){
+    PM_DATA = PM_DATA.concat(imported);
+    savePortfolioData(); renderMutualFunds(); switchPTab('mutual');
+  } else {
+    PS_DATA = PS_DATA.concat(imported);
+    savePortfolioData(); renderStocks(); switchPTab('stocks');
+  }
+  showToast('✅ ' + imported.length + '件インポートしました');
+}
+function parseCsvLine(line){
+  const result=[]; let cur=''; let inQ=false;
+  for(let c of line){
+    if(c==='"'){ inQ=!inQ; }
+    else if(c===','&&!inQ){ result.push(cur); cur=''; }
+    else { cur+=c; }
+  }
+  result.push(cur);
+  return result.map(s=>s.trim());
+}
+function findCol(headers, candidates){
+  for(const c of candidates){
+    const idx = headers.findIndex(h=>h.replace(/"/g,'').includes(c));
+    if(idx>=0) return idx;
+  }
+  return -1;
+}
+function parseNumericCell(s){
+  if(!s) return 0;
+  return parseFloat(s.replace(/[",￥¥\s]/g,'').replace(/[^0-9.-]/g,''))||0;
+}
+
+// ── 円グラフ ──
+const PIE_COLORS = ['#3b82f6','#10b981','#f59e0b','#8b5cf6','#ef4444','#64748b','#f97316','#06b6d4'];
+const PIE_LABELS = ['投資信託','個別株','現金・預金','保険','不動産','その他'];
+
+function renderPieChart(){
+  // ライフプランBSからデータ取得
+  let lpCash=0, lpInsurance=0, lpReal=0, lpOther=0;
+  try{
+    const bs = JSON.parse(localStorage.getItem('lifeplan_bs_v2')||'{}');
+    const curYear = new Date().getFullYear().toString();
+    const yearData = bs[curYear] || bs[Object.keys(bs).sort().pop()] || {};
+    // カテゴリ別に集計
+    Object.values(yearData).forEach(item=>{
+      if(!item||typeof item.amount==='undefined') return;
+      const amt = parseFloat(item.amount)||0;
+      const cat = (item.category||'').toLowerCase();
+      if(cat.includes('現金')||cat.includes('預金')||cat.includes('銀行')) lpCash+=amt;
+      else if(cat.includes('保険')) lpInsurance+=amt;
+      else if(cat.includes('不動産')||cat.includes('住宅')||cat.includes('土地')) lpReal+=amt;
+      else if(!cat.includes('投資')&&!cat.includes('株')&&!cat.includes('fund')) lpOther+=amt;
+    });
+  }catch(e){}
+
+  // 手動入力の読み込み
+  const cash = parseFloat(document.getElementById('pa-cash')?.value||PA_DATA.cash)||lpCash/10000;
+  const ins  = parseFloat(document.getElementById('pa-insurance')?.value||PA_DATA.insurance)||lpInsurance/10000;
+  const real = parseFloat(document.getElementById('pa-realestate')?.value||PA_DATA.realestate)||lpReal/10000;
+  const oth  = parseFloat(document.getElementById('pa-other')?.value||PA_DATA.other)||lpOther/10000;
+
+  const mutualTotal = PM_DATA.reduce((s,r)=>s+(parseFloat(r.value)||0),0)/10000;
+  const stockTotal  = PS_DATA.reduce((s,r)=>s+(parseFloat(r.value)||0),0)/10000;
+
+  const data = [
+    {label:'投資信託', value:mutualTotal, color:'#3b82f6'},
+    {label:'個別株',   value:stockTotal,  color:'#10b981'},
+    {label:'現金・預金',value:cash,       color:'#f59e0b'},
+    {label:'保険',     value:ins,         color:'#8b5cf6'},
+    {label:'不動産',   value:real,        color:'#ef4444'},
+    {label:'その他',   value:oth,         color:'#64748b'},
+  ].filter(d=>d.value>0);
+
+  const total = data.reduce((s,d)=>s+d.value,0);
+  const svg = document.getElementById('ppie-svg');
+  if(!svg) return;
+  if(total===0){
+    svg.innerHTML='<text x="160" y="130" text-anchor="middle" fill="#94a3b8" font-size="13">データを入力してください</text>';
+    document.getElementById('ppie-legend').innerHTML='';
+    return;
+  }
+
+  const cx=160, cy=130, r=100;
+  let paths='', startAngle=-Math.PI/2;
+  data.forEach(d=>{
+    const angle = (d.value/total)*2*Math.PI;
+    const endAngle = startAngle+angle;
+    const x1=cx+r*Math.cos(startAngle), y1=cy+r*Math.sin(startAngle);
+    const x2=cx+r*Math.cos(endAngle),   y2=cy+r*Math.sin(endAngle);
+    const large = angle>Math.PI?1:0;
+    const midAngle = startAngle+angle/2;
+    const lx=cx+(r+18)*Math.cos(midAngle), ly=cy+(r+18)*Math.sin(midAngle);
+    const pct = (d.value/total*100).toFixed(1);
+    paths+=`<path d="M${cx},${cy} L${x1.toFixed(1)},${y1.toFixed(1)} A${r},${r} 0 ${large},1 ${x2.toFixed(1)},${y2.toFixed(1)} Z" fill="${d.color}" stroke="#fff" stroke-width="2" opacity=".92"/>`;
+    if(parseFloat(pct)>=5) paths+=`<text x="${lx.toFixed(1)}" y="${ly.toFixed(1)}" text-anchor="middle" dominant-baseline="middle" fill="${d.color}" font-size="10" font-weight="700">${pct}%</text>`;
+    startAngle=endAngle;
+  });
+  // 中央テキスト
+  paths+=`<circle cx="${cx}" cy="${cy}" r="48" fill="white"/>`;
+  paths+=`<text x="${cx}" y="${cy-8}" text-anchor="middle" fill="#1a2b4a" font-size="11" font-weight="700">合計資産</text>`;
+  paths+=`<text x="${cx}" y="${cy+10}" text-anchor="middle" fill="#1a2b4a" font-size="14" font-weight="900">${Math.round(total).toLocaleString()}万円</text>`;
+  svg.innerHTML=paths;
+
+  // 凡例
+  const leg = document.getElementById('ppie-legend');
+  if(leg){
+    leg.innerHTML = data.map(d=>`
+      <div style="display:flex;align-items:center;gap:8px;padding:6px 0;border-bottom:1px solid #f1f5f9;">
+        <div style="width:12px;height:12px;border-radius:3px;background:${d.color};flex-shrink:0;"></div>
+        <span style="flex:1;font-size:.8rem;color:#374151;">${d.label}</span>
+        <span style="font-size:.82rem;font-weight:700;color:#1a2b4a;">${Math.round(d.value).toLocaleString()}万円</span>
+        <span style="font-size:.72rem;color:#64748b;min-width:40px;text-align:right;">${(d.value/total*100).toFixed(1)}%</span>
+      </div>`).join('');
+  }
+}
+function saveAssetInputs(){
+  PA_DATA.cash       = parseFloat(document.getElementById('pa-cash')?.value)||0;
+  PA_DATA.insurance  = parseFloat(document.getElementById('pa-insurance')?.value)||0;
+  PA_DATA.realestate = parseFloat(document.getElementById('pa-realestate')?.value)||0;
+  PA_DATA.other      = parseFloat(document.getElementById('pa-other')?.value)||0;
+  savePortfolioData();
+  renderPieChart();
+}
+// ===== /投資ポートフォリオ機能 =====
+
 // Google login は残す（PC用）
 function loginWithGoogle(){
   if(!fbAuth) return;
@@ -5690,6 +5998,10 @@ function syncToFirestore(manual=false){
     lifeplan_family:         localStorage.getItem('lifeplan_family_v1') || '',
     lifeplan_display:        localStorage.getItem('lifeplan_display_v1') || '',
     lifeplan_custom_owners:  localStorage.getItem('lifeplan_custom_owners_v1') || '',
+    // 投資ポートフォリオ
+    portfolio_mutual:        localStorage.getItem('kazoku_portfolio_mutual_v1') || '',
+    portfolio_stocks:        localStorage.getItem('kazoku_portfolio_stocks_v1') || '',
+    portfolio_assets:        localStorage.getItem('kazoku_portfolio_assets_v1') || '',
     updatedAt:               firebase.firestore.FieldValue.serverTimestamp()
   };
   fbDb.collection('users').doc(fbCurrentUser.uid).collection('sync').doc('main')
@@ -5771,6 +6083,10 @@ function fbApplyCloudData(d){
   localStorage.setItem('lifeplan_family_v1',          d.lifeplan_family         || '');
   localStorage.setItem('lifeplan_display_v1',         d.lifeplan_display        || '');
   localStorage.setItem('lifeplan_custom_owners_v1',   d.lifeplan_custom_owners  || '');
+  // 投資ポートフォリオ
+  localStorage.setItem('kazoku_portfolio_mutual_v1',  d.portfolio_mutual        || '');
+  localStorage.setItem('kazoku_portfolio_stocks_v1',  d.portfolio_stocks        || '');
+  localStorage.setItem('kazoku_portfolio_assets_v1',  d.portfolio_assets        || '');
   showFbStatus('✅ 同期済み');
   showToast('☁️ クラウドのデータで更新します…');
   setTimeout(() => location.reload(), 1500);
@@ -5939,6 +6255,115 @@ document.addEventListener('DOMContentLoaded', initFirebase);
     </div>
   </div>
 </div>
+
+
+<!-- ===== 投資ポートフォリオ モーダル ===== -->
+<div id="portfolio-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:20000;align-items:center;justify-content:center;padding:12px;box-sizing:border-box;"
+     onclick="if(event.target===this)closePortfolioModal()">
+  <div style="background:#fff;border-radius:20px;width:100%;max-width:560px;max-height:92vh;display:flex;flex-direction:column;overflow:hidden;box-shadow:0 16px 60px rgba(0,0,0,.35);">
+
+    <!-- ヘッダー -->
+    <div style="display:flex;align-items:center;justify-content:space-between;padding:16px 20px;border-bottom:1.5px solid #f1f5f9;flex-shrink:0;background:linear-gradient(135deg,#0f172a,#064e3b);border-radius:20px 20px 0 0;">
+      <div>
+        <div style="font-size:1rem;font-weight:900;color:#fff;">📈 投資ポートフォリオ</div>
+        <div style="font-size:.68rem;color:rgba(255,255,255,.6);margin-top:2px;">投資信託・個別株・資産配分</div>
+      </div>
+      <button onclick="closePortfolioModal()" style="background:rgba(255,255,255,.15);border:none;color:#fff;width:30px;height:30px;border-radius:50%;cursor:pointer;font-size:1rem;touch-action:manipulation;">✕</button>
+    </div>
+
+    <!-- タブ -->
+    <div style="display:flex;background:#f8fafc;flex-shrink:0;border-bottom:1.5px solid #e2e8f0;">
+      <button id="ptab-mutual" onclick="switchPTab('mutual')" style="flex:1;padding:10px 4px;border:none;cursor:pointer;font-size:.78rem;font-weight:700;border-radius:0;transition:all .2s;touch-action:manipulation;">📊 投資信託</button>
+      <button id="ptab-stocks" onclick="switchPTab('stocks')" style="flex:1;padding:10px 4px;border:none;cursor:pointer;font-size:.78rem;font-weight:700;border-radius:0;transition:all .2s;touch-action:manipulation;">📈 個別株</button>
+      <button id="ptab-chart"  onclick="switchPTab('chart')"  style="flex:1;padding:10px 4px;border:none;cursor:pointer;font-size:.78rem;font-weight:700;border-radius:0;transition:all .2s;touch-action:manipulation;">🥧 資産配分</button>
+    </div>
+
+    <!-- スクロール領域 -->
+    <div style="overflow-y:auto;flex:1;padding:16px;">
+
+      <!-- 投資信託パネル -->
+      <div id="ppanel-mutual">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">
+          <div id="pmutual-summary" style="font-size:.78rem;color:#374151;"></div>
+          <button onclick="addMutualFund()" style="background:#0f172a;border:none;color:#fff;padding:6px 14px;border-radius:8px;cursor:pointer;font-size:.75rem;font-weight:700;touch-action:manipulation;">＋ 追加</button>
+        </div>
+        <div style="overflow-x:auto;">
+          <table style="width:100%;border-collapse:collapse;min-width:400px;">
+            <thead><tr style="background:#f8fafc;">
+              <th style="padding:6px 4px;text-align:left;font-size:.7rem;color:#64748b;font-weight:700;">ファンド名</th>
+              <th style="padding:6px 4px;text-align:right;font-size:.7rem;color:#64748b;font-weight:700;">元本(円)</th>
+              <th style="padding:6px 4px;text-align:right;font-size:.7rem;color:#64748b;font-weight:700;">評価額(円)</th>
+              <th style="padding:6px 4px;text-align:right;font-size:.7rem;color:#64748b;font-weight:700;">損益</th>
+              <th style="padding:6px 4px;"></th>
+            </tr></thead>
+            <tbody id="pmutual-rows"></tbody>
+          </table>
+        </div>
+        <div style="margin-top:12px;padding:10px;background:#f0fdf4;border-radius:10px;font-size:.7rem;color:#166534;">
+          💡 楽天証券・SBI証券の「保有投資信託一覧」CSVを個別株タブからインポートできます
+        </div>
+      </div>
+
+      <!-- 個別株パネル -->
+      <div id="ppanel-stocks" style="display:none;">
+        <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px;">
+          <label style="display:inline-flex;align-items:center;gap:6px;background:#fff7ed;border:1.5px solid #fed7aa;color:#c2410c;padding:7px 12px;border-radius:8px;cursor:pointer;font-size:.75rem;font-weight:700;touch-action:manipulation;">
+            📂 楽天証券CSV
+            <input id="pcsv-input-rakuten" type="file" accept=".csv" onchange="importPortfolioCSV(this.files[0],'stocks');this.value='';" style="display:none;">
+          </label>
+          <label style="display:inline-flex;align-items:center;gap:6px;background:#eff6ff;border:1.5px solid #bfdbfe;color:#1d4ed8;padding:7px 12px;border-radius:8px;cursor:pointer;font-size:.75rem;font-weight:700;touch-action:manipulation;">
+            📂 SBI証券CSV
+            <input id="pcsv-input-sbi" type="file" accept=".csv" onchange="importPortfolioCSV(this.files[0],'stocks');this.value='';" style="display:none;">
+          </label>
+          <button onclick="addStock()" style="background:#0f172a;border:none;color:#fff;padding:7px 12px;border-radius:8px;cursor:pointer;font-size:.75rem;font-weight:700;touch-action:manipulation;">＋ 手動追加</button>
+        </div>
+        <div id="pstocks-summary" style="font-size:.78rem;color:#374151;margin-bottom:10px;"></div>
+        <div style="overflow-x:auto;">
+          <table style="width:100%;border-collapse:collapse;min-width:400px;">
+            <thead><tr style="background:#f8fafc;">
+              <th style="padding:6px 4px;text-align:left;font-size:.7rem;color:#64748b;font-weight:700;">銘柄名</th>
+              <th style="padding:6px 4px;text-align:right;font-size:.7rem;color:#64748b;font-weight:700;">取得額(円)</th>
+              <th style="padding:6px 4px;text-align:right;font-size:.7rem;color:#64748b;font-weight:700;">評価額(円)</th>
+              <th style="padding:6px 4px;text-align:right;font-size:.7rem;color:#64748b;font-weight:700;">損益</th>
+              <th style="padding:6px 4px;"></th>
+            </tr></thead>
+            <tbody id="pstocks-rows"></tbody>
+          </table>
+        </div>
+        <div style="margin-top:12px;padding:10px;background:#f0f9ff;border-radius:10px;font-size:.7rem;color:#075985;">
+          💡 証券会社マイページ → 保有銘柄 → CSV出力 でダウンロードしてインポートできます（UTF-8・Shift-JIS対応）
+        </div>
+      </div>
+
+      <!-- 資産配分パネル -->
+      <div id="ppanel-chart" style="display:none;">
+        <svg id="ppie-svg" viewBox="0 0 320 260" style="width:100%;max-width:320px;display:block;margin:0 auto;"></svg>
+        <div id="ppie-legend" style="margin:8px 0 16px;"></div>
+        <div style="background:#f8fafc;border-radius:12px;padding:14px;">
+          <div style="font-size:.8rem;font-weight:800;color:#1a2b4a;margin-bottom:10px;">📝 その他資産を手動入力（万円）</div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
+            <div><label style="font-size:.72rem;color:#64748b;">現金・預金</label>
+              <input id="pa-cash" type="number" value="" placeholder="0" oninput="saveAssetInputs()" style="width:100%;border:1.5px solid #e2e8f0;border-radius:8px;padding:6px 10px;font-size:.85rem;box-sizing:border-box;margin-top:3px;"></div>
+            <div><label style="font-size:.72rem;color:#64748b;">保険・年金</label>
+              <input id="pa-insurance" type="number" value="" placeholder="0" oninput="saveAssetInputs()" style="width:100%;border:1.5px solid #e2e8f0;border-radius:8px;padding:6px 10px;font-size:.85rem;box-sizing:border-box;margin-top:3px;"></div>
+            <div><label style="font-size:.72rem;color:#64748b;">不動産</label>
+              <input id="pa-realestate" type="number" value="" placeholder="0" oninput="saveAssetInputs()" style="width:100%;border:1.5px solid #e2e8f0;border-radius:8px;padding:6px 10px;font-size:.85rem;box-sizing:border-box;margin-top:3px;"></div>
+            <div><label style="font-size:.72rem;color:#64748b;">その他</label>
+              <input id="pa-other" type="number" value="" placeholder="0" oninput="saveAssetInputs()" style="width:100%;border:1.5px solid #e2e8f0;border-radius:8px;padding:6px 10px;font-size:.85rem;box-sizing:border-box;margin-top:3px;"></div>
+          </div>
+          <div style="font-size:.68rem;color:#94a3b8;margin-top:8px;">※ 資産管理ページのBSデータがある場合は自動反映されます</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- フッター -->
+    <div style="padding:12px 16px;border-top:1.5px solid #f1f5f9;display:flex;justify-content:flex-end;gap:8px;flex-shrink:0;">
+      <button onclick="savePortfolioData();showToast('💾 保存しました');closePortfolioModal();"
+        style="background:#0f172a;border:none;color:#fff;padding:10px 20px;border-radius:10px;cursor:pointer;font-size:.82rem;font-weight:700;touch-action:manipulation;">💾 保存して閉じる</button>
+    </div>
+  </div>
+</div>
+<!-- ===== /投資ポートフォリオ モーダル ===== -->
 
 </body>
 </html>
