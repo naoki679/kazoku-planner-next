@@ -5778,23 +5778,23 @@ function importPortfolioCSV(file, type){
   } catch(e){ reader.readAsText(file, 'UTF-8'); }
 }
 function parsePortfolioCSV(text, mode){
+  // 楽天「保有商品一覧（すべて）」フォーマット検出（株式＋投資信託混在）
+  if(text.includes('保有商品詳細')){
+    parseRakutenAllCSV(text);
+    return;
+  }
+  // 通常フォーマット（投資信託専用CSV・SBI等）
   const lines = text.split(/\r?\n/).filter(l=>l.trim());
   if(lines.length < 2){ alert('CSVのデータが読み取れませんでした'); return; }
-  // ヘッダー行を探す（銘柄/ファンド名が含まれる行）
   let headerIdx = 0;
   for(let i=0;i<Math.min(5,lines.length);i++){
     if(lines[i].match(/銘柄|ファンド|名称/)){headerIdx=i;break;}
   }
   const headers = parseCsvLine(lines[headerIdx]);
-  // カラムマッピング
-  // 楽天投資信託: ファンド / 取得総額 / 時価評価額
-  // SBI投資信託: ファンド名 / 取得金額 / 評価額
-  // 楽天株式: 銘柄名 / 取得金額 / 評価額
-  // SBI株式: 銘柄 / 取得金額 / 評価額
-  const nameCol   = findCol(headers, ['銘柄名','ファンド名','ファンド','名称','銘柄']);
-  const costCol   = findCol(headers, ['取得総額','取得金額','投資金額','取得価格','取得単価','平均取得価額']);
-  const valueCol  = findCol(headers, ['時価評価額','評価額','評価金額','現在値','時価']);
-  if(nameCol<0){ alert('銘柄名/ファンド名の列が見つかりません。\n対応フォーマット:\n・楽天証券: 投資信託残高CSV / 株式保有一覧CSV\n・SBI証券: 投資信託残高CSV / 株式保有一覧CSV'); return; }
+  const nameCol  = findCol(headers, ['銘柄名','ファンド名','ファンド','名称','銘柄']);
+  const costCol  = findCol(headers, ['取得総額','取得金額','投資金額','取得価格','取得単価','平均取得価額']);
+  const valueCol = findCol(headers, ['時価評価額','評価額','評価金額','現在値','時価']);
+  if(nameCol<0){ alert('銘柄名/ファンド名の列が見つかりません。\n対応フォーマット:\n・楽天証券: 投資信託残高CSV / 保有商品一覧CSV\n・SBI証券: 投資信託残高CSV / 株式保有一覧CSV'); return; }
   const imported = [];
   for(let i=headerIdx+1;i<lines.length;i++){
     const cols = parseCsvLine(lines[i]);
@@ -5802,13 +5802,11 @@ function parsePortfolioCSV(text, mode){
     const name = cols[nameCol].trim().replace(/"/g,'');
     let cost  = costCol>=0  ? parseNumericCell(cols[costCol]) : 0;
     let value = valueCol>=0 ? parseNumericCell(cols[valueCol]) : 0;
-    // 取得単価×数量の場合
     if(cost===0){
-      const priceCol  = findCol(headers, ['取得単価','平均取得単価']);
-      const countCol  = findCol(headers, ['保有株数','保有口数','数量','保有数量']);
-      if(priceCol>=0 && countCol>=0){
+      const priceCol = findCol(headers, ['取得単価','平均取得単価']);
+      const countCol = findCol(headers, ['保有株数','保有口数','数量','保有数量']);
+      if(priceCol>=0 && countCol>=0)
         cost = parseNumericCell(cols[priceCol]) * parseNumericCell(cols[countCol]);
-      }
     }
     if(name) imported.push({name, cost:Math.round(cost), value:Math.round(value)});
   }
@@ -5816,11 +5814,7 @@ function parsePortfolioCSV(text, mode){
   const existing = mode==='mutual' ? PM_DATA : PS_DATA;
   let overwrite = true;
   if(existing.length > 0){
-    overwrite = confirm(
-      imported.length + '件のデータを読み込みました。\n\n' +
-      '「OK」→ 既存データを上書き（CSVの内容に入れ替え）\n' +
-      '「キャンセル」→ 既存データに追加'
-    );
+    overwrite = confirm(imported.length+'件のデータを読み込みました。\n\nOK → 既存データを上書き\nキャンセル → 既存データに追加');
   }
   if(mode==='mutual'){
     PM_DATA = overwrite ? imported : PM_DATA.concat(imported);
@@ -5829,7 +5823,91 @@ function parsePortfolioCSV(text, mode){
     PS_DATA = overwrite ? imported : PS_DATA.concat(imported);
     savePortfolioData(); renderStocks(); switchPTab('stocks');
   }
-  showToast('✅ ' + imported.length + '件' + (overwrite?'で上書き':'を追加') + 'しました');
+  showToast('✅ '+imported.length+'件'+(overwrite?'で上書き':'を追加')+'しました');
+}
+
+// 楽天証券「保有商品一覧（すべて）」CSVパーサー
+// 株式・投資信託が混在→自動振り分け
+function parseRakutenAllCSV(text){
+  const lines = text.split(/\r?\n/);
+  // 「保有商品詳細」セクションのヘッダー行を探す
+  let headerIdx = -1;
+  for(let i=0; i<lines.length; i++){
+    if(lines[i].includes('保有商品詳細')){
+      for(let j=i+1; j<Math.min(i+5,lines.length); j++){
+        if(lines[j].includes('種別')){ headerIdx=j; break; }
+      }
+      break;
+    }
+  }
+  if(headerIdx<0){ alert('保有商品詳細セクションが見つかりません'); return; }
+
+  const headers = parseCsvLine(lines[headerIdx]);
+  // 評価損益[円] を正確に特定（[％]と区別）
+  let gainColIdx = -1;
+  for(let i=0; i<headers.length; i++){
+    const h = headers[i].replace(/"/g,'');
+    if(h.includes('評価損益') && h.includes('円')){ gainColIdx=i; break; }
+  }
+  const valueColIdx = findCol(headers, ['時価評価額[円]','時価評価額']);
+
+  const stocks = [], mutuals = [];
+  for(let i=headerIdx+1; i<lines.length; i++){
+    const line = lines[i];
+    if(!line || !line.trim() || line.includes('■')) break;
+    const cols = parseCsvLine(line);
+    if(cols.length < 3) continue;
+    const type  = cols[0].replace(/"/g,'').trim();
+    const name  = cols[2].replace(/"/g,'').trim();
+    if(!name || name==='-') continue;
+    const value = valueColIdx>=0 ? parseNumericCell(cols[valueColIdx]) : 0;
+    const gain  = gainColIdx>=0  ? parseNumericCell(cols[gainColIdx])  : 0;
+    const cost  = Math.round(Math.max(0, value - gain));
+    const item  = {name, cost, value: Math.round(value)};
+    if(type.includes('投資信託'))            mutuals.push(item);
+    else if(type.match(/株式|ETF|REIT|債券/)) stocks.push(item);
+    // 外貨預り金等はスキップ
+  }
+
+  if(stocks.length===0 && mutuals.length===0){ alert('データが読み取れませんでした'); return; }
+
+  // 投資信託も取り込むか確認
+  let importMutuals = false;
+  const summary = [
+    stocks.length  ? '株式 '+stocks.length+'件'    : null,
+    mutuals.length ? '投資信託 '+mutuals.length+'件' : null,
+  ].filter(Boolean).join('、');
+
+  if(mutuals.length > 0){
+    importMutuals = confirm(
+      '楽天証券 保有商品一覧を検出しました。\n'+summary+'が含まれています。\n\n'+
+      'OK     → 株式＋投資信託を両方取込み\n'+
+      'キャンセル → 株式のみ取込み（投資信託は除外）'
+    );
+  }
+
+  // 上書き確認
+  let owStocks = true, owMutuals = true;
+  if(stocks.length>0 && PS_DATA.length>0)
+    owStocks   = confirm('個別株タブに既存データ('+PS_DATA.length+'件)があります。\nOK→上書き / キャンセル→追加');
+  if(importMutuals && mutuals.length>0 && PM_DATA.length>0)
+    owMutuals  = confirm('投資信託タブに既存データ('+PM_DATA.length+'件)があります。\nOK→上書き / キャンセル→追加');
+
+  if(stocks.length>0)
+    PS_DATA = owStocks   ? stocks   : PS_DATA.concat(stocks);
+  if(importMutuals && mutuals.length>0)
+    PM_DATA = owMutuals  ? mutuals  : PM_DATA.concat(mutuals);
+
+  savePortfolioData();
+  renderStocks();
+  if(importMutuals) renderMutualFunds();
+  switchPTab('stocks');
+
+  const done = [
+    stocks.length  ? '株式'+stocks.length+'件'              : null,
+    importMutuals && mutuals.length ? '投資信託'+mutuals.length+'件' : null,
+  ].filter(Boolean).join('・');
+  showToast('✅ '+done+'を取込みました');
 }
 function parseCsvLine(line){
   const result=[]; let cur=''; let inQ=false;
