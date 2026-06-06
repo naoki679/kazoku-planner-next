@@ -3919,9 +3919,58 @@ function closeAIDiag(){
 // ============================================================
 const PREMIUM_KEY  = 'kazoku_premium_v1';
 const PREMIUM_CODES = [
-  // ★ Stripeで決済完了後にユーザーへ送付するコードをここに追加
-  // 例: 'KAZOKU-2024-ABCD', 'KAZOKU-2024-EFGH'
-  'KAZOKU-PREMIUM-2024', // テスト用（本番前に削除）
+  // ★ 先着無料50名コード（配布済み）
+  'KAZOKU-FREE-UTRV-UI0E',
+  'KAZOKU-FREE-K6VX-6V5K',
+  'KAZOKU-FREE-TGIB-F5WS',
+  'KAZOKU-FREE-RKER-P4S6',
+  'KAZOKU-FREE-2QQM-LXSQ',
+  'KAZOKU-FREE-Z08R-N2R1',
+  'KAZOKU-FREE-NBM9-QZCM',
+  'KAZOKU-FREE-H606-HYW4',
+  'KAZOKU-FREE-59I0-8TN8',
+  'KAZOKU-FREE-3GGJ-RJVG',
+  'KAZOKU-FREE-338A-YR9N',
+  'KAZOKU-FREE-1YPK-JZLA',
+  'KAZOKU-FREE-TLDP-ZI10',
+  'KAZOKU-FREE-GTOT-GSJG',
+  'KAZOKU-FREE-6MVH-FKZ6',
+  'KAZOKU-FREE-LGWK-LQFO',
+  'KAZOKU-FREE-UQ29-1DUI',
+  'KAZOKU-FREE-9KQE-8P5W',
+  'KAZOKU-FREE-MT5P-7OJB',
+  'KAZOKU-FREE-5T3H-3RML',
+  'KAZOKU-FREE-UBZP-YXVC',
+  'KAZOKU-FREE-83UX-TZUG',
+  'KAZOKU-FREE-V3VZ-MVDS',
+  'KAZOKU-FREE-J4BP-FKKK',
+  'KAZOKU-FREE-WSP6-V9SK',
+  'KAZOKU-FREE-CR1I-FUQ1',
+  'KAZOKU-FREE-CCHN-OEUZ',
+  'KAZOKU-FREE-Y86X-M7Q3',
+  'KAZOKU-FREE-TS30-J77Z',
+  'KAZOKU-FREE-CDZK-HBRM',
+  'KAZOKU-FREE-CC3Y-UIRW',
+  'KAZOKU-FREE-Y6OZ-CUXL',
+  'KAZOKU-FREE-FCLY-KBT5',
+  'KAZOKU-FREE-UAO8-2OYY',
+  'KAZOKU-FREE-URP8-D9US',
+  'KAZOKU-FREE-MOZ0-E267',
+  'KAZOKU-FREE-BXDF-A0RY',
+  'KAZOKU-FREE-F8L2-DZJM',
+  'KAZOKU-FREE-P6G6-5P74',
+  'KAZOKU-FREE-BSDW-T98B',
+  'KAZOKU-FREE-OXRT-RP4Q',
+  'KAZOKU-FREE-A7E7-MYRE',
+  'KAZOKU-FREE-IPDR-KDBH',
+  'KAZOKU-FREE-FAN5-DQUS',
+  'KAZOKU-FREE-PN3I-80MV',
+  'KAZOKU-FREE-15SG-EJJD',
+  'KAZOKU-FREE-ODAD-0T73',
+  'KAZOKU-FREE-XYGP-153R',
+  'KAZOKU-FREE-W33W-J74J',
+  'KAZOKU-FREE-QFP8-0EKJ',
+  // ★ Stripe購入者コードはここに追加
 ];
 
 function isPremium(){
@@ -3932,6 +3981,16 @@ function activatePremium(code){
   const normalized = code.trim().toUpperCase();
   if(PREMIUM_CODES.includes(normalized)){
     localStorage.setItem(PREMIUM_KEY, 'active');
+    // Firestoreに使用ログを記録（使用者数把握）
+    try {
+      if(fbDb){
+        fbDb.collection('premium_activations').add({
+          code: normalized,
+          activatedAt: firebase.firestore.FieldValue.serverTimestamp(),
+          ua: navigator.userAgent.slice(0, 120),
+        });
+      }
+    } catch(e){ console.warn('Firestore log error:', e); }
     closePremiumModal();
     showPremiumWelcome();
     recalc();
