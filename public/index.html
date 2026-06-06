@@ -5787,10 +5787,14 @@ function parsePortfolioCSV(text, mode){
   }
   const headers = parseCsvLine(lines[headerIdx]);
   // カラムマッピング
-  const nameCol   = findCol(headers, ['銘柄名','ファンド名','名称','銘柄']);
-  const costCol   = findCol(headers, ['取得金額','投資金額','取得価格','取得単価','平均取得価額']);
-  const valueCol  = findCol(headers, ['評価額','時価評価額','評価金額','現在値','時価']);
-  if(nameCol<0){ alert('銘柄名の列が見つかりません。\n対応フォーマット: 楽天証券・SBI証券の保有銘柄CSV'); return; }
+  // 楽天投資信託: ファンド / 取得総額 / 時価評価額
+  // SBI投資信託: ファンド名 / 取得金額 / 評価額
+  // 楽天株式: 銘柄名 / 取得金額 / 評価額
+  // SBI株式: 銘柄 / 取得金額 / 評価額
+  const nameCol   = findCol(headers, ['銘柄名','ファンド名','ファンド','名称','銘柄']);
+  const costCol   = findCol(headers, ['取得総額','取得金額','投資金額','取得価格','取得単価','平均取得価額']);
+  const valueCol  = findCol(headers, ['時価評価額','評価額','評価金額','現在値','時価']);
+  if(nameCol<0){ alert('銘柄名/ファンド名の列が見つかりません。\n対応フォーマット:\n・楽天証券: 投資信託残高CSV / 株式保有一覧CSV\n・SBI証券: 投資信託残高CSV / 株式保有一覧CSV'); return; }
   const imported = [];
   for(let i=headerIdx+1;i<lines.length;i++){
     const cols = parseCsvLine(lines[i]);
@@ -6283,9 +6287,19 @@ document.addEventListener('DOMContentLoaded', initFirebase);
 
       <!-- 投資信託パネル -->
       <div id="ppanel-mutual">
+        <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px;">
+          <label style="display:inline-flex;align-items:center;gap:6px;background:#fff7ed;border:1.5px solid #fed7aa;color:#c2410c;padding:7px 12px;border-radius:8px;cursor:pointer;font-size:.75rem;font-weight:700;touch-action:manipulation;">
+            📂 楽天証券CSV
+            <input id="pcsv-mutual-rakuten" type="file" accept=".csv" onchange="importPortfolioCSV(this.files[0],'mutual');this.value='';" style="display:none;">
+          </label>
+          <label style="display:inline-flex;align-items:center;gap:6px;background:#eff6ff;border:1.5px solid #bfdbfe;color:#1d4ed8;padding:7px 12px;border-radius:8px;cursor:pointer;font-size:.75rem;font-weight:700;touch-action:manipulation;">
+            📂 SBI証券CSV
+            <input id="pcsv-mutual-sbi" type="file" accept=".csv" onchange="importPortfolioCSV(this.files[0],'mutual');this.value='';" style="display:none;">
+          </label>
+          <button onclick="addMutualFund()" style="background:#0f172a;border:none;color:#fff;padding:7px 12px;border-radius:8px;cursor:pointer;font-size:.75rem;font-weight:700;touch-action:manipulation;">＋ 手動追加</button>
+        </div>
         <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">
           <div id="pmutual-summary" style="font-size:.78rem;color:#374151;"></div>
-          <button onclick="addMutualFund()" style="background:#0f172a;border:none;color:#fff;padding:6px 14px;border-radius:8px;cursor:pointer;font-size:.75rem;font-weight:700;touch-action:manipulation;">＋ 追加</button>
         </div>
         <div style="overflow-x:auto;">
           <table style="width:100%;border-collapse:collapse;min-width:400px;">
@@ -6300,7 +6314,8 @@ document.addEventListener('DOMContentLoaded', initFirebase);
           </table>
         </div>
         <div style="margin-top:12px;padding:10px;background:#f0fdf4;border-radius:10px;font-size:.7rem;color:#166534;">
-          💡 楽天証券・SBI証券の「保有投資信託一覧」CSVを個別株タブからインポートできます
+          💡 楽天証券: マイページ → 保有投資信託 → CSV出力（Shift-JIS自動対応）<br>
+          　 SBI証券: 口座管理 → 保有商品一覧 → 投資信託 → CSV出力
         </div>
       </div>
 
