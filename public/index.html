@@ -305,6 +305,8 @@ input[type=range]{flex:1;height:4px;accent-color:var(--blue);cursor:pointer;}
       <button onclick="syncToFirestore(true)" title="クラウドへ保存"
         style="background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.2);color:#fff;padding:4px 8px;border-radius:6px;cursor:pointer;font-size:.65rem;font-weight:700;touch-action:manipulation;">🔄 保存</button>
       <span id="fb-sync-status" style="font-size:.58rem;color:rgba(255,255,255,.5);"></span>
+      <button id="fb-setpass-btn" onclick="openSetPasswordModal()" title="スマホ用パスワードを設定"
+        style="background:rgba(16,185,129,.2);border:1px solid rgba(16,185,129,.4);color:#6ee7b7;padding:4px 7px;border-radius:6px;cursor:pointer;font-size:.65rem;touch-action:manipulation;display:none;">🔑</button>
       <button onclick="fbLogout()"
         style="background:rgba(220,38,38,.2);border:1px solid rgba(220,38,38,.4);color:#fca5a5;padding:4px 7px;border-radius:6px;cursor:pointer;font-size:.65rem;touch-action:manipulation;">退出</button>
     </div>
@@ -5566,6 +5568,63 @@ function fbSendPasswordReset(){
     });
 }
 
+// スマホ用パスワード設定モーダル
+function openSetPasswordModal(){
+  const m = document.getElementById('fb-setpass-modal');
+  if(m){
+    m.style.display = 'flex';
+    document.body.style.overflow = 'hidden';
+    const u = fbAuth.currentUser;
+    if(u){ document.getElementById('fb-setpass-email').textContent = u.email || ''; }
+    document.getElementById('fb-setpass-err').textContent = '';
+    document.getElementById('fb-setpass-input').value = '';
+  }
+}
+function closeSetPasswordModal(){
+  const m = document.getElementById('fb-setpass-modal');
+  if(m){ m.style.display='none'; document.body.style.overflow=''; }
+}
+function fbDoSetPassword(){
+  const pass = document.getElementById('fb-setpass-input').value;
+  const err  = document.getElementById('fb-setpass-err');
+  err.style.color = '#dc2626';
+  if(pass.length < 6){ err.textContent='6文字以上で入力してください'; return; }
+  const user = fbAuth.currentUser;
+  if(!user){ err.textContent='ログインしていません'; return; }
+  err.style.color = '#64748b';
+  err.textContent = '⏳ 設定中...';
+  const email = user.email;
+  const credential = firebase.auth.EmailAuthProvider.credential(email, pass);
+  // まずlinkを試みる（まだメール認証が紐付いていない場合）
+  user.linkWithCredential(credential)
+    .then(() => {
+      err.style.color = '#16a34a';
+      err.textContent = '✅ パスワードを設定しました！スマホでもこのGmailとパスワードでログインできます';
+    })
+    .catch(e => {
+      if(e.code === 'auth/provider-already-linked' || e.code === 'auth/credential-already-in-use' || e.code === 'auth/email-already-in-use'){
+        // すでにリンク済み → updatePasswordで上書き
+        user.updatePassword(pass)
+          .then(() => {
+            err.style.color = '#16a34a';
+            err.textContent = '✅ パスワードを更新しました！スマホでもこのGmailとパスワードでログインできます';
+          })
+          .catch(e2 => {
+            if(e2.code === 'auth/requires-recent-login'){
+              err.style.color = '#dc2626';
+              err.textContent = '再認証が必要です。一度ログアウトして再度Googleでログインしてからお試しください';
+            } else {
+              err.style.color = '#dc2626';
+              err.textContent = 'エラー: ' + (e2.code||e2.message);
+            }
+          });
+      } else {
+        err.style.color = '#dc2626';
+        err.textContent = 'エラー: ' + (e.code||e.message);
+      }
+    });
+}
+
 // Google login は残す（PC用）
 function loginWithGoogle(){
   if(!fbAuth) return;
@@ -5589,6 +5648,7 @@ function updateFbUI(user){
     userInfo.style.display = 'flex';
     const photo = document.getElementById('fb-user-photo');
     const name  = document.getElementById('fb-user-name');
+    const spBtn = document.getElementById('fb-setpass-btn');
     if(photo && user.photoURL) photo.src = user.photoURL;
     if(name)  name.textContent = (user.displayName||'ユーザー').split(' ')[0];
   } else {
@@ -5801,6 +5861,27 @@ document.addEventListener('DOMContentLoaded', initFirebase);
 </footer>
 <!-- ===== /アフィリエイトエリア ===== -->
 
+
+<!-- スマホ用パスワード設定モーダル -->
+<div id="fb-setpass-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:99999;align-items:center;justify-content:center;padding:20px;box-sizing:border-box;"
+     onclick="if(event.target===this)closeSetPasswordModal()">
+  <div style="background:#fff;border-radius:20px;padding:28px 24px;max-width:380px;width:100%;box-shadow:0 8px 40px rgba(0,0,0,.25);">
+    <div style="font-size:1.1rem;font-weight:900;color:#1a2b4a;margin-bottom:4px;">📱 スマホ用パスワード設定</div>
+    <div style="font-size:.78rem;color:#64748b;margin-bottom:4px;">スマホではGoogleログインが使えないため、メール＋パスワードでログインできるよう設定します。</div>
+    <div style="font-size:.78rem;color:#64748b;margin-bottom:20px;">メールアドレス: <strong id="fb-setpass-email" style="color:#1a2b4a;"></strong></div>
+    <div style="display:flex;flex-direction:column;gap:10px;">
+      <input id="fb-setpass-input" type="password" placeholder="新しいパスワード（6文字以上）" autocomplete="new-password"
+        style="padding:12px 14px;border:1.5px solid #e2e8f0;border-radius:10px;font-size:.95rem;width:100%;box-sizing:border-box;">
+      <div id="fb-setpass-err" style="font-size:.78rem;color:#64748b;min-height:36px;line-height:1.5;"></div>
+      <button onclick="fbDoSetPassword()"
+        style="padding:13px;background:linear-gradient(135deg,#10b981,#059669);border:none;border-radius:12px;color:#fff;font-size:.95rem;font-weight:800;cursor:pointer;touch-action:manipulation;">
+        パスワードを設定する
+      </button>
+      <button onclick="closeSetPasswordModal()"
+        style="padding:8px;background:none;border:none;color:#94a3b8;font-size:.8rem;cursor:pointer;">閉じる</button>
+    </div>
+  </div>
+</div>
 
 <!-- Firebase メール認証モーダル -->
 <div id="fb-login-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:99999;align-items:center;justify-content:center;padding:20px;box-sizing:border-box;"
