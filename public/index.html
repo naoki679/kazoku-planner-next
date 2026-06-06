@@ -5813,14 +5813,23 @@ function parsePortfolioCSV(text, mode){
     if(name) imported.push({name, cost:Math.round(cost), value:Math.round(value)});
   }
   if(imported.length===0){ alert('データが読み取れませんでした'); return; }
+  const existing = mode==='mutual' ? PM_DATA : PS_DATA;
+  let overwrite = true;
+  if(existing.length > 0){
+    overwrite = confirm(
+      imported.length + '件のデータを読み込みました。\n\n' +
+      '「OK」→ 既存データを上書き（CSVの内容に入れ替え）\n' +
+      '「キャンセル」→ 既存データに追加'
+    );
+  }
   if(mode==='mutual'){
-    PM_DATA = PM_DATA.concat(imported);
+    PM_DATA = overwrite ? imported : PM_DATA.concat(imported);
     savePortfolioData(); renderMutualFunds(); switchPTab('mutual');
   } else {
-    PS_DATA = PS_DATA.concat(imported);
+    PS_DATA = overwrite ? imported : PS_DATA.concat(imported);
     savePortfolioData(); renderStocks(); switchPTab('stocks');
   }
-  showToast('✅ ' + imported.length + '件インポートしました');
+  showToast('✅ ' + imported.length + '件' + (overwrite?'で上書き':'を追加') + 'しました');
 }
 function parseCsvLine(line){
   const result=[]; let cur=''; let inQ=false;
