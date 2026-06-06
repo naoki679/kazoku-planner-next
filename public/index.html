@@ -6050,7 +6050,12 @@ function renderPieChart(){
     const midAngle = startAngle+angle/2;
     const lx=cx+(r+18)*Math.cos(midAngle), ly=cy+(r+18)*Math.sin(midAngle);
     const pct = (d.value/total*100).toFixed(1);
-    paths+=`<path d="M${cx},${cy} L${x1.toFixed(1)},${y1.toFixed(1)} A${r},${r} 0 ${large},1 ${x2.toFixed(1)},${y2.toFixed(1)} Z" fill="${d.color}" stroke="#fff" stroke-width="2" opacity=".92"/>`;
+    // 1件だけ（100%）のときはSVGアーク始終点が一致して描画されないので<circle>で代替
+    if(data.length===1){
+      paths+=`<circle cx="${cx}" cy="${cy}" r="${r}" fill="${d.color}" stroke="#fff" stroke-width="2" opacity=".92"/>`;
+    } else {
+      paths+=`<path d="M${cx},${cy} L${x1.toFixed(1)},${y1.toFixed(1)} A${r},${r} 0 ${large},1 ${x2.toFixed(1)},${y2.toFixed(1)} Z" fill="${d.color}" stroke="#fff" stroke-width="2" opacity=".92"/>`;
+    }
     if(parseFloat(pct)>=5) paths+=`<text x="${lx.toFixed(1)}" y="${ly.toFixed(1)}" text-anchor="middle" dominant-baseline="middle" fill="${d.color}" font-size="10" font-weight="700">${pct}%</text>`;
     startAngle=endAngle;
   });
