@@ -4557,10 +4557,24 @@ function renderObStep4Rows(){
       <span style="font-size:.7rem;color:#64748b;">年</span>
     </div>`;
   }
-  const insEl = document.getElementById('ob-s4-ins-rows');
-  const sbiEl = document.getElementById('ob-s4-sbi-rows');
-  if(insEl) insEl.innerHTML = insHtml;
-  if(sbiEl) sbiEl.innerHTML = sbiHtml;
+  let currHtml = '';
+  for(let i=0;i<n;i++){
+    const ch = CONFIG.children[i];
+    const nm = ch.name || NAMES[i];
+    const col = COLORS[i];
+    currHtml += `<div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;">
+      <span style="color:${col};font-weight:700;font-size:.73rem;min-width:36px;">${nm}</span>
+      <input id="ob-s4-curr-${i}" type="number" value="${ch.current||0}" min="0" placeholder="0"
+        style="width:72px;padding:6px 8px;border:1.5px solid #fde68a;border-radius:8px;font-size:.85rem;font-weight:700;text-align:center;">
+      <span style="font-size:.7rem;color:#64748b;">万円</span>
+    </div>`;
+  }
+  const insEl  = document.getElementById('ob-s4-ins-rows');
+  const sbiEl  = document.getElementById('ob-s4-sbi-rows');
+  const currEl = document.getElementById('ob-s4-curr-rows');
+  if(insEl)  insEl.innerHTML  = insHtml;
+  if(sbiEl)  sbiEl.innerHTML  = sbiHtml;
+  if(currEl) currEl.innerHTML = currHtml;
 }
 function obApplyInitialSavings(){
   const ret = parseFloat(document.getElementById('ob-s4-retire-curr')?.value);
@@ -4574,6 +4588,8 @@ function obApplyInitialSavings(){
     if(!isNaN(insY) && insY > 2020) CONFIG.children[i].insYear = insY;
     if(!isNaN(sbi))              CONFIG.children[i].sbi = sbi;
     if(!isNaN(sbiY) && sbiY > 2020) CONFIG.children[i].sbiYear = sbiY;
+    const curr = parseFloat(document.getElementById('ob-s4-curr-'+i)?.value);
+    if(!isNaN(curr) && curr >= 0) CONFIG.children[i].current = curr;
   }
   recalc();
 }
@@ -5208,6 +5224,12 @@ window.addEventListener('DOMContentLoaded', () => setTimeout(waitAndInit, 50));
             <input id="ob-s4-retire-curr" type="number" value="0" min="0" max="5000" style="width:90px;padding:9px 12px;border:1.5px solid #bbf7d0;border-radius:10px;font-size:1rem;font-weight:700;text-align:center;">
             <span style="font-size:.84rem;color:#475569;">万円</span>
           </div>
+        </div>
+        <!-- 子どもの現在の教育貯蓄 -->
+        <div style="background:#fef9c3;border-radius:12px;padding:12px 14px;border-left:3px solid #d97706;">
+          <div style="font-size:.76rem;font-weight:800;color:#92400e;margin-bottom:5px;">🐷 子どもの現在の教育貯蓄額</div>
+          <div style="font-size:.67rem;color:#b45309;margin-bottom:8px;line-height:1.5;">お子さんのために既に貯めてある教育費用の金額を入力してください。わからなければ0のままでOKです。</div>
+          <div id="ob-s4-curr-rows" style="display:flex;flex-direction:column;gap:8px;"></div>
         </div>
         <!-- 教育資金用保険の解約金 -->
         <div style="background:#eff6ff;border-radius:12px;padding:12px 14px;border-left:3px solid #2563eb;">
