@@ -792,6 +792,34 @@ input[type=range]{flex:1;height:4px;accent-color:var(--blue);cursor:pointer;}
 
   <div class="divider"></div>
 
+  <!-- iDeCo積立設定 -->
+  <div class="sb-section">
+    <div class="sb-title">💎 iDeCo（個人型確定拠出年金）</div>
+    <div style="font-size:.62rem;color:var(--muted);margin-bottom:10px;line-height:1.5;">
+      毎月の掛け金と運用利回りを入力すると、<br>老後資金の試算に自動で加算されます。
+    </div>
+    <div class="sb-field">
+      <div class="sb-label">掛け金 <span id="badge-ideco-monthly" style="font-size:.72rem;color:#3b82f6;font-weight:700;margin-left:4px;">0.0万円/月</span></div>
+      <div class="num-row" style="width:100%;">
+        <button class="num-btn" onclick="adj('iDeCoMonthly',-0.1)">−</button>
+        <input type="number" id="iDeCoMonthly" value="0" min="0" max="6.8" step="0.1" oninput="recalc()">
+        <button class="num-btn" onclick="adj('iDeCoMonthly',0.1)">＋</button>
+        <span class="input-unit">万円/月</span>
+      </div>
+      <div style="font-size:.6rem;color:#64748b;margin-top:3px;">上限: 会社員2.3万/月　自営業6.8万/月</div>
+    </div>
+    <div class="sb-field">
+      <div class="sb-label">運用利回り（年率）</div>
+      <div class="slider-wrap">
+        <input type="range" id="iDeCoReturn" min="0" max="10" step="0.5" value="5" oninput="recalc()">
+        <div class="slider-val" id="badge-ideco-return">5.0%</div>
+      </div>
+      <div style="font-size:.62rem;color:#64748b;margin-top:2px;">インデックス型長期 4〜7% が目安</div>
+    </div>
+  </div>
+
+  <div class="divider"></div>
+
   <!-- 老後資金→教育費 取り崩し -->
   <div class="sb-section">
     <div class="sb-title">🏦 老後資金の教育費取り崩し</div>
@@ -1143,6 +1171,10 @@ input[type=range]{flex:1;height:4px;accent-color:var(--blue);cursor:pointer;}
             <div class="rd-lbl">老後専用積立</div>
             <div class="rd-val" id="retire-monthly-disp" style="color:var(--navy);">─</div>
           </div>
+          <div class="rd-block" id="retire-ideco-row" style="display:none;">
+            <div class="rd-lbl">iDeCo(65歳時)</div>
+            <div class="rd-val" id="retire-ideco-disp" style="color:#3b82f6;">─</div>
+          </div>
         </div>
         <!-- 振替シミュレーション結果行 -->
         <div id="retire-stepup-row" style="display:none;margin-top:10px;padding:8px 12px;background:linear-gradient(135deg,#ecfdf5,#d1fae5);border-radius:8px;border:1px solid #6ee7b7;">
@@ -1304,6 +1336,8 @@ function buildState(){
 let CURRENT_YEAR      = CONFIG.baseYear;
 let RETIRE_CURRENT    = CONFIG.retireCurrent;
 let RETIRE_TARGET_YEAR = CURRENT_YEAR + 30; // 65歳の年（ownerAge=35想定デフォルト）
+let IDECO_MONTHLY = 0;   // iDeCo掛け金（万円/月）
+let IDECO_RATE    = 0.05; // iDeCo運用利回り（年率）
 let CHILDREN          = [];
 buildState();
 
@@ -1668,6 +1702,15 @@ function calcAllCascaded(eduPerChild, fund=null){
   });
 }
 
+function calcIDeCoFV(years){
+  // iDeCoの将来価値（万円）: 掛け金を years 年間複利運用した額
+  const r = IDECO_RATE;
+  const m = IDECO_MONTHLY * 12;
+  if(years <= 0 || m <= 0) return 0;
+  if(r === 0) return Math.round(m * years);
+  return Math.round(m * ((Math.pow(1 + r, years) - 1) / r));
+}
+
 function calcRetireYear(monthly){
   const target=v('retireTarget'), rate=v('investReturn')/100;
   const wOn = document.getElementById('withdrawOn')?.checked ?? false;
@@ -1679,7 +1722,7 @@ function calcRetireYear(monthly){
   for(let yr=CURRENT_YEAR+1;yr<=limit;yr++){
     pool=pool*(1+rate)+monthly*12;
     if(wOn && wAmt>0 && yr===wYear) pool -= wAmt;
-    if(pool>=target) return yr;
+    if(pool + calcIDeCoFV(yr - CURRENT_YEAR) >= target) return yr;
   }
   return null;
 }
@@ -1696,7 +1739,8 @@ function calcRetirePoolAt65(monthly){
     pool=pool*(1+rate)+monthly*12;
     if(wOn && wAmt>0 && yr===wYear) pool -= wAmt;
   }
-  return Math.round(pool);
+  const totalYrs65 = limit - CURRENT_YEAR;
+  return Math.round(pool + calcIDeCoFV(totalYrs65));
 }
 
 // 教育費完了後に老後積立へ段階振替するシミュレーション
@@ -1744,10 +1788,11 @@ function calcRetireStepUp(baseMonthly, eduPerChild, fund) {
       pool     -= wAmt2;
       poolBase -= wAmt2;
     }
-    dataStepUp.push(Math.round(pool));
-    dataBase  .push(Math.round(poolBase));
-    if(!achieveBase && poolBase >= target) achieveBase = yr;
-    if(!achieveStep && pool     >= target) achieveStep = yr;
+    const iDeCoFV = calcIDeCoFV(i);
+    dataStepUp.push(Math.round(pool     + iDeCoFV));
+    dataBase  .push(Math.round(poolBase + iDeCoFV));
+    if(!achieveBase && poolBase + iDeCoFV >= target) achieveBase = yr;
+    if(!achieveStep && pool     + iDeCoFV >= target) achieveStep = yr;
   }
 
   return { dataStepUp, dataBase, steps, achieveBase, achieveStep,
@@ -1776,6 +1821,14 @@ function recalc(){
   if(metaEl) metaEl.textContent='基準: '+CURRENT_YEAR+'年 ／ 子ども'+CHILDREN.length+'人';
   const retCurEl=document.getElementById('retire-current-disp');
   if(retCurEl) retCurEl.textContent=RETIRE_CURRENT.toLocaleString()+'万円';
+  // iDeCoカード更新
+  const _idecoRow = document.getElementById('retire-ideco-row');
+  const _idecoDisp = document.getElementById('retire-ideco-disp');
+  if(_idecoRow) _idecoRow.style.display = IDECO_MONTHLY > 0 ? '' : 'none';
+  if(_idecoDisp && IDECO_MONTHLY > 0) {
+    const _idecoYrs = RETIRE_TARGET_YEAR - CURRENT_YEAR;
+    _idecoDisp.textContent = '+' + calcIDeCoFV(_idecoYrs).toLocaleString() + '万円';
+  }
 
   // 65歳達成年の動的計算
   const ownerAge = Math.max(20, Math.min(64, v('ownerAge') || 35));
@@ -1832,6 +1885,13 @@ function recalc(){
   document.getElementById('badge-univcost-sen').textContent = (v('senmonCost')||110)+'万円/年';
   document.getElementById('badge-return').textContent = v('investReturn').toFixed(1)+'%';
   document.getElementById('badge-retire-target').textContent = v('retireTarget').toLocaleString()+'万円';
+  // iDeCoグローバル更新
+  IDECO_MONTHLY = v('iDeCoMonthly') || 0;
+  IDECO_RATE    = (v('iDeCoReturn') || 5) / 100;
+  const _ibm = document.getElementById('badge-ideco-monthly');
+  if(_ibm) _ibm.textContent = IDECO_MONTHLY.toFixed(1) + '万円/月';
+  const _ibr = document.getElementById('badge-ideco-return');
+  if(_ibr) _ibr.textContent = (IDECO_RATE * 100).toFixed(1) + '%';
 
   // Scholarship UI
   const scholOn = document.getElementById('scholOn').checked;
@@ -2989,15 +3049,17 @@ function updateRetireYearlyTable(monthly, stepUpResult=null) {
       pool = pool * (1 + rate) + monthly2 * 12;
       if(wOn && wAmt > 0 && yr === wYear){ pool -= wAmt; ev.push('🏦 取り崩し▼'+wAmt+'万'); }
     }
-    const pct   = Math.min(100, Math.round(pool / target * 100));
-    const reach = !achieved && pool >= target;
+    const iDeCoFV2  = calcIDeCoFV(i);
+    const totalPool = pool + iDeCoFV2;
+    const pct   = Math.min(100, Math.round(totalPool / target * 100));
+    const reach = !achieved && totalPool >= target;
     if(reach) { achieved = true; ev.push('🎯 目標達成！'); }
 
     // 5年毎 or 達成年 or 取り崩し年 or ステップアップ年 のみ表示
     const show = i===0 || i%5===0 || reach || (wOn&&yr===wYear) || stepMap[yr];
     if(!show) continue;
 
-    rows.push({ yr, pool:Math.round(pool), monthly:monthly2, pct, reach, ev:ev.join(' ／ '), isFirst:i===0 });
+    rows.push({ yr, pool:Math.round(totalPool), monthly:monthly2, pct, reach, ev:ev.join(' ／ '), isFirst:i===0 });
   }
 
   const thead = `<tr>
@@ -3030,6 +3092,7 @@ function updateRetireYearlyTable(monthly, stepUpResult=null) {
   el.innerHTML = `<table class="retire-yr-table"><thead>${thead}</thead><tbody>${tbody}</tbody></table>
     <div style="margin-top:6px;font-size:.67rem;color:var(--muted);">
       📌 目標: <strong>${target.toLocaleString()}万円</strong>　現在: <strong>${RETIRE_CURRENT.toLocaleString()}万円</strong>　運用利回り: <strong>${(rate*100).toFixed(1)}%</strong>
+      ${IDECO_MONTHLY > 0 ? `　💎 iDeCo: <strong style="color:#3b82f6;">${IDECO_MONTHLY.toFixed(1)}万/月（利回り${(IDECO_RATE*100).toFixed(1)}%）含む</strong>` : ''}
       ${stepUpResult ? '　🔄 振替シミュレーション反映済み' : ''}
     </div>`;
 }
@@ -3050,10 +3113,10 @@ function updateRetireChart(monthly, stepUpResult=null){
       baseData = stepUpResult.dataBase;
     } else {
       let pool = RETIRE_CURRENT;
-      baseData = [pool];
+      baseData = [Math.round(pool + calcIDeCoFV(0))];
       for(let i = 1; i < years.length; i++){
         pool = pool * (1 + v('investReturn')/100) + monthly * 12;
-        baseData.push(Math.round(pool));
+        baseData.push(Math.round(pool + calcIDeCoFV(i)));
       }
     }
     const goalData    = years.map(() => target);
@@ -4312,7 +4375,8 @@ const SAVE_NUMBER_IDS = [
   'eduMonthly','retireMonthly','univCostPublic','univCostPrivate','senmonCost','investReturn',
   'retireTarget','scholRate','sSchol','kSchol','aSchol','bSchol',
   'fundStartYear','fundInitial','fundMonthly','fundRate','eduInvestReturn',
-  'withdrawYear','withdrawAmt'
+  'withdrawYear','withdrawAmt',
+  'iDeCoMonthly','iDeCoReturn'
 ];
 const SAVE_CHECKBOX_IDS = [
   'scholOn','subsidyOn','autoSubsidy','eduInvestOn','sInvest','kInvest','aInvest','bInvest','fundOn','stepUpOn',
