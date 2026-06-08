@@ -801,9 +801,9 @@ input[type=range]{flex:1;height:4px;accent-color:var(--blue);cursor:pointer;}
     <div class="sb-field">
       <div class="sb-label">掛け金 <span id="badge-ideco-monthly" style="font-size:.72rem;color:#3b82f6;font-weight:700;margin-left:4px;">0.0万円/月</span></div>
       <div class="num-row" style="width:100%;">
-        <button class="num-btn" onclick="adj('iDeCoMonthly',-0.1)">−</button>
+        <button class="num-btn" onclick="adj('iDeCoMonthly',-1)">−</button>
         <input type="number" id="iDeCoMonthly" value="0" min="0" max="6.8" step="0.1" oninput="recalc()">
-        <button class="num-btn" onclick="adj('iDeCoMonthly',0.1)">＋</button>
+        <button class="num-btn" onclick="adj('iDeCoMonthly',1)">＋</button>
         <span class="input-unit">万円/月</span>
       </div>
       <div style="font-size:.6rem;color:#64748b;margin-top:3px;">上限: 会社員2.3万/月　自営業6.8万/月</div>
@@ -1468,7 +1468,7 @@ let retireChartInst = null;
 // HELPERS
 // ============================================================
 function v(id){ const el=document.getElementById(id); return el?parseFloat(el.value)||0:0; }
-function adj(id,delta){ const el=document.getElementById(id); el.value=Math.max(parseFloat(el.min)||0,Math.min(parseFloat(el.max)||99999,(parseFloat(el.value)||0)+delta)); recalc(); }
+function adj(id,delta){ const el=document.getElementById(id); const raw=(parseFloat(el.value)||0)+delta; const step=parseFloat(el.step)||1; const dec=step<1?Math.round(-Math.log10(step)):0; const rounded=parseFloat(raw.toFixed(dec)); el.value=Math.max(parseFloat(el.min)||0,Math.min(parseFloat(el.max)||99999,rounded)); recalc(); }
 function adjF(id,delta,mn,mx){ const el=document.getElementById(id); el.value=Math.round((Math.max(mn,Math.min(mx,(parseFloat(el.value)||0)+delta)))*10)/10; recalc(); }
 function setRing(id,pct,circ){ const el=document.getElementById(id); if(!el)return; el.style.strokeDashoffset=circ*(1-Math.min(pct,100)/100); }
 
