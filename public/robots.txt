@@ -1,0 +1,4 @@
+User-agent: *
+Allow: /
+
+Sitemap: https://kazoku-planner-next.pages.dev/sitemap.xml
