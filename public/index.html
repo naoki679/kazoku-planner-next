@@ -4082,26 +4082,38 @@ function isPremium(){
   return localStorage.getItem(PREMIUM_KEY) === 'active';
 }
 
-function activatePremium(code){
+async function activatePremium(code){
   const normalized = code.trim().toUpperCase();
-  if(PREMIUM_CODES.includes(normalized)){
-    localStorage.setItem(PREMIUM_KEY, 'active');
-    // Firestoreに使用ログを記録（使用者数把握）
+  if(!PREMIUM_CODES.includes(normalized)) return 'invalid';
+
+  // ── Firestoreトランザクションで使いまわし防止 ──
+  if(fbDb){
     try {
-      if(fbDb){
-        fbDb.collection('premium_activations').add({
-          code: normalized,
+      const ref = fbDb.collection('premium_codes').doc(normalized);
+      await fbDb.runTransaction(async (t) => {
+        const snap = await t.get(ref);
+        if(snap.exists){
+          const err = new Error('CODE_USED');
+          err.code = 'CODE_USED';
+          throw err;
+        }
+        t.set(ref, {
           activatedAt: firebase.firestore.FieldValue.serverTimestamp(),
           ua: navigator.userAgent.slice(0, 120),
         });
-      }
-    } catch(e){ console.warn('Firestore log error:', e); }
-    closePremiumModal();
-    showPremiumWelcome();
-    recalc();
-    return true;
+      });
+    } catch(e){
+      if(e.code === 'CODE_USED') return 'used';
+      // Firestore接続エラー（オフライン等）はスルーして有効化を許可
+      console.warn('Firestore check error:', e);
+    }
   }
-  return false;
+
+  localStorage.setItem(PREMIUM_KEY, 'active');
+  closePremiumModal();
+  showPremiumWelcome();
+  recalc();
+  return 'ok';
 }
 
 function showPremiumWelcome(){
@@ -4139,11 +4151,20 @@ function showPremiumTab(tab){
   });
 }
 
-function tryActivateCode(){
+async function tryActivateCode(){
   const code = document.getElementById('premium-code-input')?.value || '';
   const msgEl = document.getElementById('premium-code-msg');
-  if(activatePremium(code)){
+  const btn   = document.getElementById('premium-code-btn');
+  if(btn){ btn.disabled = true; btn.textContent = '確認中…'; }
+  if(msgEl){ msgEl.textContent = ''; }
+
+  const result = await activatePremium(code);
+
+  if(btn){ btn.disabled = false; btn.textContent = 'コードを適用'; }
+  if(result === 'ok'){
     if(msgEl){ msgEl.textContent = '✅ 認証成功！プレミアム機能が解放されました'; msgEl.style.color='#16a34a'; }
+  } else if(result === 'used'){
+    if(msgEl){ msgEl.textContent = '❌ このコードはすでに使用されています'; msgEl.style.color='#dc2626'; }
   } else {
     if(msgEl){ msgEl.textContent = '❌ コードが正しくありません。もう一度ご確認ください'; msgEl.style.color='#dc2626'; }
   }
@@ -5118,7 +5139,7 @@ window.addEventListener('DOMContentLoaded', () => setTimeout(waitAndInit, 50));
         <div style="font-size:.84rem;font-weight:800;color:#1a2b4a;margin-bottom:6px;">🔑 アクセスコードを入力</div>
         <div style="font-size:.72rem;color:#64748b;margin-bottom:14px;">購入後にメールで届いたコードを入力してください。</div>
         <input id="premium-code-input" type="text" placeholder="例: KAZOKU-XXXX-XXXX" style="width:100%;box-sizing:border-box;padding:12px 14px;border:1.5px solid #e2e8f0;border-radius:10px;font-size:.88rem;font-family:monospace;text-transform:uppercase;letter-spacing:.1em;outline:none;margin-bottom:8px;" oninput="this.value=this.value.toUpperCase()">
-        <button onclick="tryActivateCode()" style="width:100%;padding:13px;background:#4f46e5;border:none;color:#fff;border-radius:10px;font-size:.88rem;font-weight:800;cursor:pointer;touch-action:manipulation;margin-bottom:8px;" onmouseover="this.style.opacity='.88'" onmouseout="this.style.opacity='1'">✅ コードを認証する</button>
+        <button id="premium-code-btn" onclick="tryActivateCode()" style="width:100%;padding:13px;background:#4f46e5;border:none;color:#fff;border-radius:10px;font-size:.88rem;font-weight:800;cursor:pointer;touch-action:manipulation;margin-bottom:8px;" onmouseover="this.style.opacity='.88'" onmouseout="this.style.opacity='1'">✅ コードを認証する</button>
         <div id="premium-code-msg" style="font-size:.78rem;text-align:center;min-height:20px;"></div>
       </div>
     </div>
