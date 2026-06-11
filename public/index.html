@@ -2984,18 +2984,21 @@ function updateMonthlyCF(income, edu, retire, selfIncome=0, spouseIncome=0, bonu
 
   // kakeibo_income_override_v1 の手入力収入（存在すればそれが月の確定収入）
   let effectiveIncome = income;
+  let _incomeOverrideSet = false;
   try {
     const _oRaw = localStorage.getItem('kakeibo_income_override_v1');
     if(_oRaw) {
       const _overrides = JSON.parse(_oRaw);
       if(_overrides[selectedMonth] != null) {
         effectiveIncome = Math.round(_overrides[selectedMonth] / 10000 * 10) / 10;
+        _incomeOverrideSet = true;
       }
     }
   } catch(e) { console.warn('income override read error', e); }
 
-  // kakeibo_v1 からカード実績（支出のみ）を読む
+  // kakeibo_v1 からカード実績（支出・収入）を読む
   let kakeiboTotal = 0;
+  let kakeiboIncTotal = 0;
   try {
     const kRaw = localStorage.getItem('kakeibo_v1');
     if(kRaw) {
@@ -3003,8 +3006,16 @@ function updateMonthlyCF(income, edu, retire, selfIncome=0, spouseIncome=0, bonu
       kakeiboTotal = allTx
         .filter(tx => tx.monthKey === selectedMonth && tx.type !== 'income')
         .reduce((s, tx) => s + (tx.amount || 0), 0);
+      kakeiboIncTotal = allTx
+        .filter(tx => tx.monthKey === selectedMonth && tx.type === 'income')
+        .reduce((s, tx) => s + (tx.amount || 0), 0);
     }
   } catch(e) { console.warn('kakeibo read error', e); }
+
+  // override未設定かつkakeiboに収入記録がある場合、設定値に加算
+  if(!_incomeOverrideSet && kakeiboIncTotal > 0) {
+    effectiveIncome = Math.round((income + kakeiboIncTotal / 10000) * 10) / 10;
+  }
 
   // kakeibo_recurring_v1 から固定費を読む
   let fixedTotal = 0;
