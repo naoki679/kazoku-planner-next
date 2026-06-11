@@ -469,7 +469,7 @@ const CARD_PALETTE=['#1a2b4a','#2563eb','#7c3aed','#db2777','#dc2626','#f97316',
 // ストレージ
 // ============================================================
 const STORAGE_KEY ='kakeibo_v1';
-const BUDGET_KEY  ='kakeibo_budgets_v1';
+const BUDGET_KEY  ='kakeibo_budget_v1';
 const CARDS_KEY   ='kakeibo_cards_v1';
 const RECURRING_KEY='kakeibo_recurring_v1';
 const CAT_MEMORY_KEY='kakeibo_cat_memory_v1';
@@ -487,6 +487,8 @@ let _manualType='expense';
 function loadStorage(){
   try{CARDS=JSON.parse(localStorage.getItem(CARDS_KEY)||'[]');}catch(e){CARDS=[];}
   try{ALL_TXN=JSON.parse(localStorage.getItem(STORAGE_KEY)||'[]');}catch(e){ALL_TXN=[];}
+  // 旧キー(kakeibo_budgets_v1)からマイグレーション
+  try{ const _old=localStorage.getItem('kakeibo_budgets_v1'); if(_old&&!localStorage.getItem('kakeibo_budget_v1')){ localStorage.setItem('kakeibo_budget_v1',_old); localStorage.removeItem('kakeibo_budgets_v1'); } }catch(e){}
   try{BUDGETS=JSON.parse(localStorage.getItem(BUDGET_KEY)||'{}');}catch(e){BUDGETS={};}
   try{RECURRING=JSON.parse(localStorage.getItem(RECURRING_KEY)||'[]');}catch(e){RECURRING=[];}
   try{CAT_MEMORY=JSON.parse(localStorage.getItem(CAT_MEMORY_KEY)||'{}');}catch(e){CAT_MEMORY={};}
@@ -1804,7 +1806,7 @@ function getSnapshots(){
 // 全データ バックアップ / リストア
 // ============================================================
 const ALL_BACKUP_KEYS=[
-  'kakeibo_v1','kakeibo_cards_v1','kakeibo_budget_v1','kakeibo_recurring_v1',
+  'kakeibo_v1','kakeibo_cards_v1','kakeibo_budget_v1','kakeibo_recurring_v1','kakeibo_custom_cats_v1','kakeibo_annual_v1',
   'kakeibo_income_override_v1','lifeplan_bs_v2','lifeplan_events_v1',
   'lifeplan_owners_v1','lifeplan_family_v1','lifeplan_display_v1',
   'lifeplan_custom_owners_v1','lifePlanSim_private_v1',

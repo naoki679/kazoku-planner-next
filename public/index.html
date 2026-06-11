@@ -6360,6 +6360,8 @@ function syncToFirestore(manual=false){
     kakeibo_budget:          localStorage.getItem('kakeibo_budget_v1') || '',
     kakeibo_income_override: localStorage.getItem('kakeibo_income_override_v1') || '',
     kakeibo_recurring:       localStorage.getItem('kakeibo_recurring_v1') || '',
+    kakeibo_custom_cats:     localStorage.getItem('kakeibo_custom_cats_v1') || '',
+    kakeibo_annual:          localStorage.getItem('kakeibo_annual_v1') || '',
     // 資産管理＋ライフプラン（lifeplan.html）
     lifeplan_bs:             localStorage.getItem('lifeplan_bs_v2') || '',
     lifeplan_events:         localStorage.getItem('lifeplan_events_v1') || '',
@@ -6445,6 +6447,8 @@ function fbApplyCloudData(d){
   localStorage.setItem('kakeibo_budget_v1',           d.kakeibo_budget          || '');
   localStorage.setItem('kakeibo_income_override_v1',  d.kakeibo_income_override || '');
   localStorage.setItem('kakeibo_recurring_v1',        d.kakeibo_recurring       || '');
+  localStorage.setItem('kakeibo_custom_cats_v1',      d.kakeibo_custom_cats     || '');
+  localStorage.setItem('kakeibo_annual_v1',           d.kakeibo_annual          || '');
   // 資産管理＋ライフプラン
   localStorage.setItem('lifeplan_bs_v2',              d.lifeplan_bs             || '');
   localStorage.setItem('lifeplan_events_v1',          d.lifeplan_events         || '');
