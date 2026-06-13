@@ -3153,7 +3153,10 @@ function openShareModal(){
   const typeLabel=t=>t==='public'?'国公立大':t==='private'?'私立大':t==='senmon2'?'専門(2年)':'専門(3年)';
 
   // カードHTML生成
-  const childRows=children.map(c=>`<div style="font-size:.6rem;color:#fde68a;margin-top:1px;">・${c.name}: ${typeLabel(c.univType)}</div>`).join('');
+  // 進路を種別ごとに集計（名前は伏せる）
+  const typeCount={};
+  children.forEach(c=>{const l=typeLabel(c.univType);typeCount[l]=(typeCount[l]||0)+1;});
+  const childRows=Object.entries(typeCount).map(([l,n])=>`<div style="font-size:.6rem;color:#fde68a;margin-top:1px;">・${l}×${n}人</div>`).join('');
   const noteBadges=[hasSchol?'奨学金あり':'',hasSub?'補助金あり':''].filter(Boolean)
     .map(n=>`<span style="background:rgba(134,239,172,.2);color:#86efac;border-radius:4px;padding:1px 5px;font-size:.58rem;">${n}</span>`).join(' ');
   const retireCard=`<div class="share-card-item">
@@ -3174,7 +3177,8 @@ function openShareModal(){
   document.getElementById('share-card-body').innerHTML=retireCard+eduCard;
 
   // ツイート文生成
-  const childSummary=children.map(c=>`${c.name}(${typeLabel(c.univType)})`).join('・');
+  // ツイート文でも進路は種別集計のみ
+  const childSummary=Object.entries(typeCount).map(([l,n])=>`${l}×${n}人`).join('・');
   const notes=[hasSchol?'奨学金あり':'',hasSub?'補助金あり':''].filter(Boolean).join('・');
   const retireLine=rYear
     ?`🌙 老後資金: ${rPct}%達成（目標${rTarget}万円）
