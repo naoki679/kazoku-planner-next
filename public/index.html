@@ -981,18 +981,7 @@ input[type=range]{flex:1;height:4px;accent-color:var(--blue);cursor:pointer;}
       </div>
       <div class="share-card">
         <div class="share-card-title">📊 ファミリープランナー シミュレーション結果</div>
-        <div class="share-card-grid">
-          <div class="share-card-item">
-            <div class="share-card-label">🌙 老後資金</div>
-            <div class="share-card-pct" id="share-retire-pct" style="color:#34d399;">─%</div>
-            <div class="share-card-sub" style="color:#a7f3d0;" id="share-retire-sub">─</div>
-          </div>
-          <div class="share-card-item">
-            <div class="share-card-label">📚 教育費</div>
-            <div class="share-card-pct" id="share-edu-pct" style="color:#fbbf24;">─%</div>
-            <div class="share-card-sub" style="color:#fde68a;">目標達成率</div>
-          </div>
-        </div>
+        <div class="share-card-grid" id="share-card-body"></div>
         <div class="share-card-url">kazoku-planner-next.pages.dev</div>
       </div>
       <div style="font-size:.72rem;color:#64748b;margin-bottom:6px;">📝 投稿文（編集できます）</div>
@@ -2241,6 +2230,7 @@ function recalc(){
   const retirePct65  = Math.min(100, Math.round(poolAt65 / retireTarget * 100)); // 65歳時点達成率
   const retirePctNow = Math.min(100, Math.round(RETIRE_CURRENT / retireTarget * 100)); // 現在残高ベース
   const retireGap65  = Math.max(0, retireTarget - poolAt65); // 65歳時点の不足額
+  const retireAgeAtAchieve = retireYear ? (retireYear - CURRENT_YEAR + ownerAge) : null;
 
   // リングは65歳時点の達成率で表示
   setRing('ring-retire', retirePct65, 201);
@@ -2264,6 +2254,7 @@ function recalc(){
 
   // シミュレーターサマリーをlocalStorageに保存（kakeibo.htmlから参照用）
   const eduPct = minEduTotal > 0 ? Math.min(100, Math.round(eduMonthly / minEduTotal * 100)) : 100;
+  const _CHILD_TYPE_IDS = ['sType','kType','aType','bType'];
   try {
     localStorage.setItem('kazoku_sim_summary_v1', JSON.stringify({
       updatedAt: new Date().toISOString(),
@@ -2273,11 +2264,18 @@ function recalc(){
       retireAge,
       retireYear,
       retireAgeAtAchieve,
+      retireMonthly,
       eduPct,
       eduMonthly,
       minEduTotal,
-      retireMonthly,
-      minRetire
+      minRetire,
+      numChildren: CONFIG.numChildren,
+      childrenInfo: CHILDREN.slice(0, CONFIG.numChildren).map((c, i) => ({
+        name: c.name,
+        univType: document.getElementById(_CHILD_TYPE_IDS[i])?.value || 'private'
+      })),
+      hasSchol:   document.getElementById('scholOn')?.checked  || false,
+      hasSubsidy: document.getElementById('subsidyOn')?.checked || false
     }));
   } catch(e){}
 
@@ -2285,7 +2283,6 @@ function recalc(){
   const banner=document.getElementById('goal-banner');
   // eduOkはminEduTotalとの比較で判定（totalEduGapとの不整合を回避）
   const eduOk = eduMonthly >= minEduTotal - 0.05; // 0.05万の誤差許容
-  const retireAgeAtAchieve = retireYear ? (retireYear - CURRENT_YEAR + ownerAge) : null;
   if(eduOk && retireYear){
     const goalYear = Math.max(retireYear, Math.max(...CHILDREN.map(c=>c.univYear)));
     banner.className='goal-banner ok';
@@ -3147,26 +3144,56 @@ function openShareModal(){
   if(!modal)return;
   let s={};
   try{s=JSON.parse(localStorage.getItem('kazoku_sim_summary_v1')||'{}');}catch(e){}
-  const rPct=s.retirePct??0;
-  const rYear=s.retireYear;
-  const rAge=s.retireAgeAtAchieve;
-  const ePct=s.eduPct??0;
-  document.getElementById('share-retire-pct').textContent=rPct+'%';
-  document.getElementById('share-retire-sub').textContent=rYear
-    ?rYear+'年（'+rAge+'歳）達成見込み'
-    :'65歳時点で'+rPct+'%';
-  document.getElementById('share-edu-pct').textContent=ePct+'%';
+  const rPct=s.retirePct??0, rYear=s.retireYear, rAge=s.retireAgeAtAchieve;
+  const rTarget=(s.retireTarget||0).toLocaleString(), rMonthly=s.retireMonthly||0;
+  const ePct=s.eduPct??0, eMonthly=s.eduMonthly||0;
+  const eNeeded=Math.ceil((s.minEduTotal||0)*10)/10;
+  const numCh=s.numChildren||0, children=s.childrenInfo||[];
+  const hasSchol=s.hasSchol||false, hasSub=s.hasSubsidy||false;
+  const typeLabel=t=>t==='public'?'国公立大':t==='private'?'私立大':t==='senmon2'?'専門(2年)':'専門(3年)';
+
+  // カードHTML生成
+  const childRows=children.map(c=>`<div style="font-size:.6rem;color:#fde68a;margin-top:1px;">・${c.name}: ${typeLabel(c.univType)}</div>`).join('');
+  const noteBadges=[hasSchol?'奨学金あり':'',hasSub?'補助金あり':''].filter(Boolean)
+    .map(n=>`<span style="background:rgba(134,239,172,.2);color:#86efac;border-radius:4px;padding:1px 5px;font-size:.58rem;">${n}</span>`).join(' ');
+  const retireCard=`<div class="share-card-item">
+    <div class="share-card-label">🌙 老後資金</div>
+    <div class="share-card-pct" style="color:#34d399;">${rPct}%</div>
+    <div style="font-size:.63rem;color:#a7f3d0;margin-top:4px;">目標 ${rTarget}万円</div>
+    <div style="font-size:.63rem;color:#a7f3d0;margin-top:2px;">${rYear?rYear+'年（'+rAge+'歳）達成見込':'65歳時'+rPct+'%達成'}</div>
+    <div style="font-size:.63rem;color:#a7f3d0;margin-top:2px;">月積立 ${rMonthly}万円</div>
+  </div>`;
+  const eduCard=`<div class="share-card-item">
+    <div class="share-card-label">📚 教育費（${numCh}人）</div>
+    <div class="share-card-pct" style="color:#fbbf24;">${ePct}%</div>
+    <div style="font-size:.63rem;color:#fde68a;margin-top:4px;">月積立 ${eMonthly}万円</div>
+    <div style="font-size:.63rem;color:#fde68a;margin-top:2px;">最低必要 ${eNeeded}万円/月</div>
+    ${childRows}
+    ${noteBadges?`<div style="margin-top:4px;">${noteBadges}</div>`:''}
+  </div>`;
+  document.getElementById('share-card-body').innerHTML=retireCard+eduCard;
+
+  // ツイート文生成
+  const childSummary=children.map(c=>`${c.name}(${typeLabel(c.univType)})`).join('・');
+  const notes=[hasSchol?'奨学金あり':'',hasSub?'補助金あり':''].filter(Boolean).join('・');
   const retireLine=rYear
-    ?`🌙 老後資金: ${rPct}%達成（${rYear}年・${rAge}歳で達成見込み）`
-    :`🌙 老後資金: 65歳時点で${rPct}%達成`;
-  const tweetText=`ファミリープランナーでライフプランをシミュレーションしました！
+    ?`🌙 老後資金: ${rPct}%達成（目標${rTarget}万円）
+  ${rYear}年・${rAge}歳で達成見込み（月${rMonthly}万円積立）`
+    :`🌙 老後資金: 65歳時点${rPct}%達成（目標${rTarget}万円・月${rMonthly}万円積立）`;
+  const eduLine=[
+    `📚 教育費: ${numCh}人分・${ePct}%達成（月${eMonthly}万円積立）`,
+    childSummary?`  進路: ${childSummary}`:'',
+    notes?`  ${notes}`:''
+  ].filter(Boolean).join('\n');
+  document.getElementById('share-tweet-text').value=
+    `ファミリープランナーでライフプランをシミュレーションしました！
 
 ${retireLine}
-📚 教育費: ${ePct}%達成
+
+${eduLine}
 
 #家族プランニング #老後資金 #教育費
 https://kazoku-planner-next.pages.dev/`;
-  document.getElementById('share-tweet-text').value=tweetText;
   modal.style.display='flex';
 }
 function closeShareModal(){
