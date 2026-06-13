@@ -1023,7 +1023,7 @@ input[type=range]{flex:1;height:4px;accent-color:var(--blue);cursor:pointer;}
   </div>
 
   <!-- PRO版機能ボタン群 -->
-  <div style="background:linear-gradient(135deg,#0f172a,#1e293b);border:none;border-radius:16px;padding:16px;margin-bottom:20px;box-shadow:0 8px 32px rgba(0,0,0,.2);">
+  <div class="premium-only" style="background:linear-gradient(135deg,#0f172a,#1e293b);border:none;border-radius:16px;padding:16px;margin-bottom:20px;box-shadow:0 8px 32px rgba(0,0,0,.2);display:none;">
     <div style="display:flex;align-items:center;gap:6px;margin-bottom:10px;">
       <span style="font-size:.78rem;font-weight:800;color:rgba(255,255,255,.9);letter-spacing:.06em;">⭐ PRO版機能</span>
       <span class="upgrade-btn" onclick="openPremiumModal('plan')" style="margin-left:auto;background:linear-gradient(135deg,#f59e0b,#f97316);color:#fff;border:none;font-size:.62rem;font-weight:700;padding:3px 9px;border-radius:10px;cursor:pointer;touch-action:manipulation;">アップグレード</span>
@@ -4319,6 +4319,8 @@ async function tryActivateCode(){
   if(btn){ btn.disabled = false; btn.textContent = 'コードを適用'; }
   if(result === 'ok'){
     if(msgEl){ msgEl.textContent = '✅ 認証成功！プレミアム機能が解放されました'; msgEl.style.color='#16a34a'; }
+    updatePremiumUI();
+    setTimeout(()=>{ closePremiumModal(); }, 1500);
   } else if(result === 'used'){
     if(msgEl){ msgEl.textContent = '❌ このコードはすでに使用されています'; msgEl.style.color='#dc2626'; }
   } else {
