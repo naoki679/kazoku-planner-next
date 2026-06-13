@@ -5262,31 +5262,179 @@ window.addEventListener('DOMContentLoaded', () => setTimeout(waitAndInit, 50));
     <!-- スクロールエリア -->
     <div style="flex:1;min-height:0;overflow-y:auto;-webkit-overflow-scrolling:touch;overscroll-behavior:contain;">
       <!-- プランタブ -->
-      <div id="ptab-plan" style="padding:20px 22px;">
+      <div id="ptab-plan" style="padding:16px 18px;">
         <div style="font-size:.82rem;font-weight:800;color:#1a2b4a;margin-bottom:12px;">🚀 PRO版でできること</div>
-        <div style="display:flex;flex-direction:column;gap:8px;margin-bottom:18px;">
-          <div style="display:flex;gap:10px;align-items:flex-start;background:#f0f9ff;border-radius:10px;padding:10px 12px;">
-            <span style="font-size:1.1rem;">🤖</span>
-            <div><div style="font-size:.78rem;font-weight:800;color:#0369a1;">詳細AI診断レポート</div><div style="font-size:.68rem;color:#0284c7;margin-top:2px;">Claude AIによる家族の状況に合わせた詳細アドバイス</div></div>
+        <div style="display:flex;flex-direction:column;gap:10px;margin-bottom:18px;">
+
+          <!-- 機能1: 資産管理＋ライフプラン -->
+          <div style="border:1.5px solid #bfdbfe;border-radius:12px;overflow:hidden;background:#fff;">
+            <div style="background:linear-gradient(135deg,#1a2b4a,#2563eb);padding:8px 12px;display:flex;align-items:center;gap:7px;">
+              <span style="font-size:1rem;">🗓</span>
+              <span style="font-size:.76rem;font-weight:800;color:#fff;letter-spacing:.02em;">資産管理＋ライフプラン</span>
+            </div>
+            <div style="padding:10px 12px 10px;display:flex;gap:10px;align-items:flex-start;">
+              <svg width="96" height="62" viewBox="0 0 96 62" style="flex-shrink:0;border-radius:6px;border:1px solid #e2e8f0;" xmlns="http://www.w3.org/2000/svg">
+                <rect width="96" height="62" fill="#f8fafc"/>
+                <!-- Y軸ラベル -->
+                <text x="2" y="10" font-size="5" fill="#94a3b8">3000</text>
+                <text x="2" y="25" font-size="5" fill="#94a3b8">2000</text>
+                <text x="2" y="40" font-size="5" fill="#94a3b8">1000</text>
+                <text x="2" y="54" font-size="5" fill="#94a3b8">0</text>
+                <!-- グリッド -->
+                <line x1="18" y1="8" x2="94" y2="8" stroke="#e2e8f0" stroke-width=".5"/>
+                <line x1="18" y1="23" x2="94" y2="23" stroke="#e2e8f0" stroke-width=".5"/>
+                <line x1="18" y1="38" x2="94" y2="38" stroke="#e2e8f0" stroke-width=".5"/>
+                <line x1="18" y1="53" x2="94" y2="53" stroke="#e2e8f0" stroke-width=".5"/>
+                <!-- 資産ライン（上昇） -->
+                <polyline points="20,50 32,44 44,38 56,30 68,20 80,12 92,8" fill="none" stroke="#2563eb" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                <!-- 教育費エリア -->
+                <polyline points="20,52 32,50 44,46 56,48 68,50 80,52 92,53" fill="none" stroke="#f59e0b" stroke-width="1.5" stroke-dasharray="3,2" stroke-linecap="round"/>
+                <!-- 凡例 -->
+                <rect x="20" y="56" width="6" height="2" fill="#2563eb" rx="1"/>
+                <text x="28" y="58" font-size="4.5" fill="#475569">総資産</text>
+                <rect x="52" y="56" width="6" height="2" fill="#f59e0b" rx="1"/>
+                <text x="60" y="58" font-size="4.5" fill="#475569">教育費</text>
+              </svg>
+              <div>
+                <div style="font-size:.7rem;font-weight:700;color:#1e40af;margin-bottom:4px;">年ごとの資産推移を可視化</div>
+                <div style="font-size:.64rem;color:#475569;line-height:1.55;">・バランスシート（資産・負債）<br>・年齢別イベント年表<br>・資産推移グラフ（最大95歳）<br>・シミュレーション結果を一覧表示</div>
+              </div>
+            </div>
           </div>
-          <div style="display:flex;gap:10px;align-items:flex-start;background:#f0fdf4;border-radius:10px;padding:10px 12px;">
-            <span style="font-size:1.1rem;">💾</span>
-            <div><div style="font-size:.78rem;font-weight:800;color:#065f46;">複数プラン保存（A/B/C）</div><div style="font-size:.68rem;color:#047857;margin-top:2px;">「楽観」「標準」「悲観」など3シナリオを保存して比較</div></div>
+
+          <!-- 機能2: 家計管理 -->
+          <div style="border:1.5px solid #bbf7d0;border-radius:12px;overflow:hidden;background:#fff;">
+            <div style="background:linear-gradient(135deg,#064e3b,#059669);padding:8px 12px;display:flex;align-items:center;gap:7px;">
+              <span style="font-size:1rem;">💳</span>
+              <span style="font-size:.76rem;font-weight:800;color:#fff;letter-spacing:.02em;">家計管理</span>
+            </div>
+            <div style="padding:10px 12px 10px;display:flex;gap:10px;align-items:flex-start;">
+              <svg width="96" height="62" viewBox="0 0 96 62" style="flex-shrink:0;border-radius:6px;border:1px solid #e2e8f0;" xmlns="http://www.w3.org/2000/svg">
+                <rect width="96" height="62" fill="#f8fafc"/>
+                <!-- 棒グラフ（カテゴリ別） -->
+                <rect x="12" y="40" width="8" height="14" fill="#059669" rx="2"/>
+                <rect x="24" y="30" width="8" height="24" fill="#3b82f6" rx="2"/>
+                <rect x="36" y="35" width="8" height="19" fill="#f59e0b" rx="2"/>
+                <rect x="48" y="45" width="8" height="9" fill="#ef4444" rx="2"/>
+                <rect x="60" y="38" width="8" height="16" fill="#8b5cf6" rx="2"/>
+                <rect x="72" y="42" width="8" height="12" fill="#06b6d4" rx="2"/>
+                <!-- ベースライン -->
+                <line x1="10" y1="54" x2="86" y2="54" stroke="#cbd5e1" stroke-width="1"/>
+                <!-- ラベル -->
+                <text x="13" y="59" font-size="4" fill="#94a3b8">食費</text>
+                <text x="25" y="59" font-size="4" fill="#94a3b8">住居</text>
+                <text x="37" y="59" font-size="4" fill="#94a3b8">教育</text>
+                <text x="49" y="59" font-size="4" fill="#94a3b8">娯楽</text>
+                <text x="61" y="59" font-size="4" fill="#94a3b8">保険</text>
+                <text x="73" y="59" font-size="4" fill="#94a3b8">他</text>
+                <!-- 収支サマリー -->
+                <rect x="88" y="8" width="6" height="4" fill="#dcfce7" rx="1"/>
+                <text x="89" y="11" font-size="3.5" fill="#16a34a">収入</text>
+                <rect x="88" y="14" width="6" height="4" fill="#fee2e2" rx="1"/>
+                <text x="89" y="17" font-size="3.5" fill="#dc2626">支出</text>
+                <!-- タイトル -->
+                <text x="12" y="10" font-size="5" fill="#1a2b4a" font-weight="bold">月次 収支内訳</text>
+              </svg>
+              <div>
+                <div style="font-size:.7rem;font-weight:700;color:#065f46;margin-bottom:4px;">家計を月別に詳細管理</div>
+                <div style="font-size:.64rem;color:#475569;line-height:1.55;">・カード明細CSVを取り込み<br>・カテゴリ別グラフで支出を把握<br>・収入・支出を手動入力も可<br>・ダッシュボードに自動連動</div>
+              </div>
+            </div>
           </div>
-          <div style="display:flex;gap:10px;align-items:flex-start;background:#fdf4ff;border-radius:10px;padding:10px 12px;">
-            <span style="font-size:1.1rem;">📅</span>
-            <div><div style="font-size:.78rem;font-weight:800;color:#6b21a8;">ライフイベント追加</div><div style="font-size:.68rem;color:#9333ea;margin-top:2px;">転職・相続・住宅購入などの臨時収支をタイムラインに追加</div></div>
+
+          <!-- 機能3: 投資ポートフォリオ -->
+          <div style="border:1.5px solid #99f6e4;border-radius:12px;overflow:hidden;background:#fff;">
+            <div style="background:linear-gradient(135deg,#134e4a,#0d9488);padding:8px 12px;display:flex;align-items:center;gap:7px;">
+              <span style="font-size:1rem;">📈</span>
+              <span style="font-size:.76rem;font-weight:800;color:#fff;letter-spacing:.02em;">投資ポートフォリオ</span>
+            </div>
+            <div style="padding:10px 12px 10px;display:flex;gap:10px;align-items:flex-start;">
+              <svg width="96" height="62" viewBox="0 0 96 62" style="flex-shrink:0;border-radius:6px;border:1px solid #e2e8f0;" xmlns="http://www.w3.org/2000/svg">
+                <rect width="96" height="62" fill="#f8fafc"/>
+                <!-- ドーナツグラフ -->
+                <!-- 背景円 -->
+                <circle cx="34" cy="32" r="20" fill="none" stroke="#e2e8f0" stroke-width="10"/>
+                <!-- セグメント（stroke-dasharray で割合表現, circumference≈125.7） -->
+                <circle cx="34" cy="32" r="20" fill="none" stroke="#3b82f6" stroke-width="10"
+                  stroke-dasharray="50 75.7" stroke-dashoffset="31.4" transform="rotate(-90 34 32)"/>
+                <circle cx="34" cy="32" r="20" fill="none" stroke="#10b981" stroke-width="10"
+                  stroke-dasharray="31 94.7" stroke-dashoffset="-18.6" transform="rotate(-90 34 32)"/>
+                <circle cx="34" cy="32" r="20" fill="none" stroke="#f59e0b" stroke-width="10"
+                  stroke-dasharray="25 100.7" stroke-dashoffset="-49.6" transform="rotate(-90 34 32)"/>
+                <circle cx="34" cy="32" r="20" fill="none" stroke="#ef4444" stroke-width="10"
+                  stroke-dasharray="19 106.7" stroke-dashoffset="-74.6" transform="rotate(-90 34 32)"/>
+                <!-- 中心ラベル -->
+                <text x="34" y="30" font-size="5" fill="#1a2b4a" text-anchor="middle" font-weight="bold">総資産</text>
+                <text x="34" y="37" font-size="6" fill="#1a2b4a" text-anchor="middle" font-weight="bold">850万</text>
+                <!-- 凡例 -->
+                <rect x="62" y="10" width="6" height="5" fill="#3b82f6" rx="1"/>
+                <text x="70" y="15" font-size="4.5" fill="#475569">国内株 40%</text>
+                <rect x="62" y="18" width="6" height="5" fill="#10b981" rx="1"/>
+                <text x="70" y="23" font-size="4.5" fill="#475569">外国株 25%</text>
+                <rect x="62" y="26" width="6" height="5" fill="#f59e0b" rx="1"/>
+                <text x="70" y="31" font-size="4.5" fill="#475569">債券 20%</text>
+                <rect x="62" y="34" width="6" height="5" fill="#ef4444" rx="1"/>
+                <text x="70" y="39" font-size="4.5" fill="#475569">現金 15%</text>
+                <!-- 損益 -->
+                <rect x="62" y="46" width="30" height="12" fill="#f0fdf4" rx="4"/>
+                <text x="77" y="52" font-size="4" fill="#15803d" text-anchor="middle">含み益</text>
+                <text x="77" y="57" font-size="5.5" fill="#15803d" text-anchor="middle" font-weight="bold">+12.4%</text>
+              </svg>
+              <div>
+                <div style="font-size:.7rem;font-weight:700;color:#0f766e;margin-bottom:4px;">資産配分を一目で確認</div>
+                <div style="font-size:.64rem;color:#475569;line-height:1.55;">・投資信託・個別株を登録<br>・円グラフで配分を可視化<br>・含み益・損益率を自動計算<br>・老後シミュレーションに連動</div>
+              </div>
+            </div>
           </div>
-          <div style="display:flex;gap:10px;align-items:flex-start;background:#fff7ed;border-radius:10px;padding:10px 12px;">
-            <span style="font-size:1.1rem;">👫</span>
-            <div><div style="font-size:.78rem;font-weight:800;color:#92400e;">夫婦別キャリアシミュ</div><div style="font-size:.68rem;color:#b45309;margin-top:2px;">配偶者の育休・復職・転職シナリオを年収に反映</div></div>
+
+          <!-- 機能4: 複数プラン保存 -->
+          <div style="border:1.5px solid #ddd6fe;border-radius:12px;overflow:hidden;background:#fff;">
+            <div style="background:linear-gradient(135deg,#312e81,#4f46e5);padding:8px 12px;display:flex;align-items:center;gap:7px;">
+              <span style="font-size:1rem;">💾</span>
+              <span style="font-size:.76rem;font-weight:800;color:#fff;letter-spacing:.02em;">複数プラン保存（A/B/C）</span>
+            </div>
+            <div style="padding:10px 12px 10px;display:flex;gap:10px;align-items:flex-start;">
+              <svg width="96" height="62" viewBox="0 0 96 62" style="flex-shrink:0;border-radius:6px;border:1px solid #e2e8f0;" xmlns="http://www.w3.org/2000/svg">
+                <rect width="96" height="62" fill="#f8fafc"/>
+                <!-- プランA -->
+                <rect x="6" y="12" width="24" height="42" fill="#dbeafe" rx="5" stroke="#93c5fd" stroke-width="1"/>
+                <text x="18" y="23" font-size="7" fill="#1d4ed8" text-anchor="middle" font-weight="bold">A</text>
+                <text x="18" y="31" font-size="4" fill="#1d4ed8" text-anchor="middle">楽観</text>
+                <rect x="10" y="34" width="16" height="3" fill="#3b82f6" rx="1.5"/>
+                <text x="18" y="42" font-size="3.8" fill="#475569" text-anchor="middle">65歳達成</text>
+                <text x="18" y="48" font-size="5" fill="#1d4ed8" text-anchor="middle" font-weight="bold">¥4200万</text>
+                <!-- プランB（アクティブ） -->
+                <rect x="36" y="6" width="24" height="50" fill="#ede9fe" rx="5" stroke="#7c3aed" stroke-width="1.5"/>
+                <text x="48" y="19" font-size="7" fill="#6d28d9" text-anchor="middle" font-weight="bold">B</text>
+                <text x="48" y="27" font-size="4" fill="#6d28d9" text-anchor="middle">標準</text>
+                <rect x="40" y="30" width="16" height="3" fill="#8b5cf6" rx="1.5"/>
+                <text x="48" y="38" font-size="3.8" fill="#475569" text-anchor="middle">67歳達成</text>
+                <text x="48" y="44" font-size="5" fill="#6d28d9" text-anchor="middle" font-weight="bold">¥3500万</text>
+                <rect x="40" y="48" width="16" height="5" fill="#7c3aed" rx="2"/>
+                <text x="48" y="52" font-size="3.5" fill="#fff" text-anchor="middle">選択中</text>
+                <!-- プランC -->
+                <rect x="66" y="12" width="24" height="42" fill="#fce7f3" rx="5" stroke="#f9a8d4" stroke-width="1"/>
+                <text x="78" y="23" font-size="7" fill="#be185d" text-anchor="middle" font-weight="bold">C</text>
+                <text x="78" y="31" font-size="4" fill="#be185d" text-anchor="middle">悲観</text>
+                <rect x="70" y="34" width="16" height="3" fill="#ec4899" rx="1.5"/>
+                <text x="78" y="42" font-size="3.8" fill="#475569" text-anchor="middle">70歳達成</text>
+                <text x="78" y="48" font-size="5" fill="#be185d" text-anchor="middle" font-weight="bold">¥2800万</text>
+              </svg>
+              <div>
+                <div style="font-size:.7rem;font-weight:700;color:#4338ca;margin-bottom:4px;">3シナリオを保存して比較</div>
+                <div style="font-size:.64rem;color:#475569;line-height:1.55;">・楽観・標準・悲観の3プラン<br>・パラメータ変更→保存→比較<br>・「転職した場合」など仮説検証<br>・いつでも切り替え可能</div>
+              </div>
+            </div>
           </div>
+
         </div>
+
+        <!-- 価格ブロック -->
         <div style="background:linear-gradient(135deg,#1a2b4a,#4f46e5);border-radius:14px;padding:16px 18px;text-align:center;margin-bottom:12px;">
           <div style="font-size:.68rem;color:rgba(255,255,255,.6);margin-bottom:4px;">買い切り・永久利用</div>
           <div style="font-size:1.6rem;font-weight:900;color:#fff;">¥980 <span style="font-size:.85rem;font-weight:400;">（税込）</span></div>
           <div style="font-size:.65rem;color:rgba(255,255,255,.6);margin-bottom:12px;">サブスク不要・1回払い</div>
-          <a href="https://buy.stripe.com/YOUR_LINK" target="_blank" style="display:block;background:linear-gradient(135deg,#f59e0b,#f97316);color:#fff;text-decoration:none;padding:12px 20px;border-radius:10px;font-size:.88rem;font-weight:800;touch-action:manipulation;" onclick="this.href='https://buy.stripe.com/YOUR_LINK'">
+          <a href="https://buy.stripe.com/YOUR_LINK" target="_blank" style="display:block;background:linear-gradient(135deg,#f59e0b,#f97316);color:#fff;text-decoration:none;padding:12px 20px;border-radius:10px;font-size:.88rem;font-weight:800;touch-action:manipulation;">
             💳 Stripeで購入する
           </a>
         </div>
