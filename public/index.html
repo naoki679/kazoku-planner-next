@@ -123,6 +123,23 @@ input[type=range]{flex:1;height:4px;accent-color:var(--blue);cursor:pointer;}
 .goal-banner.ok{background:linear-gradient(135deg,#f0fdf4,#dcfce7);border:1.5px solid #86efac;}
 .goal-banner.warn{background:linear-gradient(135deg,#fffbeb,#fef3c7);border:1.5px solid #fcd34d;}
 .goal-banner.danger{background:linear-gradient(135deg,#fef2f2,#fee2e2);border:1.5px solid #fca5a5;}
+/* ── Xシェア ── */
+.share-trigger-btn{display:inline-flex;align-items:center;gap:6px;background:#000;color:#fff;border:none;border-radius:999px;padding:8px 18px;font-size:.82rem;font-weight:600;cursor:pointer;transition:opacity .2s;}
+.share-trigger-btn:hover{opacity:.8;}
+.share-modal-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:9990;align-items:center;justify-content:center;}
+.share-modal-box{background:#fff;border-radius:20px;padding:26px;width:min(460px,94vw);box-shadow:0 24px 64px rgba(0,0,0,.3);}
+.share-card{background:linear-gradient(135deg,#0f172a 0%,#1e3a5f 100%);border-radius:14px;padding:22px;color:#fff;margin-bottom:18px;}
+.share-card-title{font-size:.7rem;color:#94a3b8;margin-bottom:14px;letter-spacing:.05em;}
+.share-card-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:14px;}
+.share-card-item{background:rgba(255,255,255,.1);border-radius:10px;padding:14px;}
+.share-card-label{font-size:.65rem;color:#94a3b8;margin-bottom:4px;}
+.share-card-pct{font-size:1.9rem;font-weight:700;line-height:1;}
+.share-card-sub{font-size:.68rem;margin-top:5px;opacity:.8;}
+.share-card-url{font-size:.6rem;color:#475569;text-align:right;}
+.share-tweet-area{background:#f8fafc;border:1.5px solid #e2e8f0;border-radius:10px;padding:14px;margin-bottom:16px;}
+.share-tweet-area textarea{width:100%;border:none;background:none;resize:none;font-size:.83rem;color:#0f172a;outline:none;font-family:inherit;}
+.share-x-btn{width:100%;background:#000;color:#fff;border:none;border-radius:999px;padding:13px;font-size:.95rem;font-weight:700;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px;transition:opacity .2s;}
+.share-x-btn:hover{opacity:.8;}
 .gs-big{font-size:1.1rem;font-weight:900;color:var(--navy);}
 .gs-big strong{font-size:1.5rem;color:var(--green);}
 .gs-big.warn strong{color:#b45309;}
@@ -947,6 +964,46 @@ input[type=range]{flex:1;height:4px;accent-color:var(--blue);cursor:pointer;}
   <!-- ゴールサマリーバナー -->
   <div class="goal-banner ok" id="goal-banner">
     <span class="gs-big">計算中...</span>
+  </div>
+  <div style="text-align:right;margin-top:-12px;margin-bottom:16px;">
+    <button class="share-trigger-btn" onclick="openShareModal()">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="white"><path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-4.714-6.231-5.401 6.231H2.744l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/></svg>
+      このプランをXでシェア
+    </button>
+  </div>
+
+  <!-- Xシェアモーダル -->
+  <div class="share-modal-overlay" id="share-modal" onclick="if(event.target===this)closeShareModal()">
+    <div class="share-modal-box">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:18px;">
+        <h3 style="margin:0;font-size:1rem;color:#0f172a;font-weight:700;">📤 Xにシェア</h3>
+        <button onclick="closeShareModal()" style="background:none;border:none;font-size:1.3rem;cursor:pointer;color:#64748b;line-height:1;">✕</button>
+      </div>
+      <div class="share-card">
+        <div class="share-card-title">📊 ファミリープランナー シミュレーション結果</div>
+        <div class="share-card-grid">
+          <div class="share-card-item">
+            <div class="share-card-label">🌙 老後資金</div>
+            <div class="share-card-pct" id="share-retire-pct" style="color:#34d399;">─%</div>
+            <div class="share-card-sub" style="color:#a7f3d0;" id="share-retire-sub">─</div>
+          </div>
+          <div class="share-card-item">
+            <div class="share-card-label">📚 教育費</div>
+            <div class="share-card-pct" id="share-edu-pct" style="color:#fbbf24;">─%</div>
+            <div class="share-card-sub" style="color:#fde68a;">目標達成率</div>
+          </div>
+        </div>
+        <div class="share-card-url">kazoku-planner-next.pages.dev</div>
+      </div>
+      <div style="font-size:.72rem;color:#64748b;margin-bottom:6px;">📝 投稿文（編集できます）</div>
+      <div class="share-tweet-area">
+        <textarea id="share-tweet-text" rows="6" style="width:100%;box-sizing:border-box;"></textarea>
+      </div>
+      <button class="share-x-btn" onclick="shareToX()">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="white"><path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-4.714-6.231-5.401 6.231H2.744l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/></svg>
+        Xに投稿する
+      </button>
+    </div>
   </div>
 
   <!-- 最低必要月額ボックス -->
@@ -2214,6 +2271,8 @@ function recalc(){
       retireCurrent: RETIRE_CURRENT,
       retireTarget,
       retireAge,
+      retireYear,
+      retireAgeAtAchieve,
       eduPct,
       eduMonthly,
       minEduTotal,
@@ -3078,6 +3137,46 @@ function updateMonthlyCF(income, edu, retire, selfIncome=0, spouseIncome=0, bonu
   noteEl.innerHTML = effectiveIncome > 0
     ? `<strong>${monthLabel}表示</strong>　貯蓄率 <strong style="color:#16a34a;">${savingsPct}%</strong>　余剰 <strong style="color:${remain >= 0 ? '#16a34a' : '#dc2626'};">${remain}万円/月</strong>`
     : `<strong>${monthLabel}表示</strong>　月収入を入力すると計算されます`;
+}
+
+// ============================================================
+// Xシェア機能
+// ============================================================
+function openShareModal(){
+  const modal=document.getElementById('share-modal');
+  if(!modal)return;
+  let s={};
+  try{s=JSON.parse(localStorage.getItem('kazoku_sim_summary_v1')||'{}');}catch(e){}
+  const rPct=s.retirePct??0;
+  const rYear=s.retireYear;
+  const rAge=s.retireAgeAtAchieve;
+  const ePct=s.eduPct??0;
+  document.getElementById('share-retire-pct').textContent=rPct+'%';
+  document.getElementById('share-retire-sub').textContent=rYear
+    ?rYear+'年（'+rAge+'歳）達成見込み'
+    :'65歳時点で'+rPct+'%';
+  document.getElementById('share-edu-pct').textContent=ePct+'%';
+  const retireLine=rYear
+    ?`🌙 老後資金: ${rPct}%達成（${rYear}年・${rAge}歳で達成見込み）`
+    :`🌙 老後資金: 65歳時点で${rPct}%達成`;
+  const tweetText=`ファミリープランナーでライフプランをシミュレーションしました！
+
+${retireLine}
+📚 教育費: ${ePct}%達成
+
+#家族プランニング #老後資金 #教育費
+https://kazoku-planner-next.pages.dev/`;
+  document.getElementById('share-tweet-text').value=tweetText;
+  modal.style.display='flex';
+}
+function closeShareModal(){
+  const m=document.getElementById('share-modal');
+  if(m)m.style.display='none';
+}
+function shareToX(){
+  const text=document.getElementById('share-tweet-text').value;
+  window.open('https://twitter.com/intent/tweet?text='+encodeURIComponent(text),'_blank');
+  closeShareModal();
 }
 
 // ============================================================
